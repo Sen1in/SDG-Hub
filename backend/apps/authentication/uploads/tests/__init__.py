@@ -1,0 +1,1 @@
+# Avatar upload tests package

@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import custom font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* Reset of basic styles */
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+  
+  * {
+    @apply box-border;
+  }
+}
+
+/* Custom component style */
+@layer components {
+  .btn-primary {
+    @apply bg-sdg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-sdg-secondary hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-outline {
+    @apply border-2 border-sdg-primary text-sdg-primary hover:bg-sdg-primary hover:text-white font-medium py-2 px-4 rounded-lg transition-all duration-200;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-soft border border-gray-100 overflow-hidden;
+  }
+  
+  .card-hover {
+    @apply card hover:shadow-medium transition-shadow duration-300;
+  }
+  
+  .gradient-bg {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  
+  .sdg-gradient {
+    background: linear-gradient(135deg, #0073E6 0%, #00A85A 100%);
+  }
+}
+
+/* Tool-style design */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Animation effect */
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+/* Responsive Grid */
+.grid-auto-fit {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+/* Custom scroll bar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}

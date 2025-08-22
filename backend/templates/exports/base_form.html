@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}Form Export{% endblock %}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 12px;
+                color: #666;
+            }
+        }
+        
+        body {
+            font-family: 'Helvetica', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #3B82F6;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin: 0 0 10px 0;
+            color: #1F2937;
+        }
+        
+        .header .subtitle {
+            font-size: 16px;
+            color: #6B7280;
+            margin: 0;
+        }
+        
+        .meta-info {
+            background: #F9FAFB;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #3B82F6;
+        }
+        
+        .meta-info .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .meta-info .row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .meta-info .label {
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .meta-info .value {
+            color: #6B7280;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1F2937;
+            margin: 0 0 15px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        
+        .field-group {
+            margin-bottom: 20px;
+        }
+        
+        .field-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 5px;
+            display: block;
+        }
+        
+        .field-value {
+            color: #4B5563;
+            padding: 8px 0;
+            border-bottom: 1px solid #F3F4F6;
+            white-space: pre-wrap;
+        }
+        
+        .field-value:empty:after {
+            content: "—";
+            color: #9CA3AF;
+        }
+        
+        /* Markdown样式 */
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
+        .markdown-content h4 {
+            color: #1F2937;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        
+        .markdown-content h1 { font-size: 24px; }
+        .markdown-content h2 { font-size: 20px; }
+        .markdown-content h3 { font-size: 18px; }
+        .markdown-content h4 { font-size: 16px; }
+        
+        .markdown-content p {
+            margin-bottom: 12px;
+        }
+        
+        .markdown-content ul,
+        .markdown-content ol {
+            margin: 12px 0;
+            padding-left: 24px;
+        }
+        
+        .markdown-content li {
+            margin-bottom: 4px;
+        }
+        
+        .markdown-content strong {
+            font-weight: 600;
+            color: #1F2937;
+        }
+        
+        .markdown-content em {
+            font-style: italic;
+            color: #4B5563;
+        }
+        
+        .markdown-content code {
+            background: #F3F4F6;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        .markdown-content blockquote {
+            border-left: 4px solid #E5E7EB;
+            padding-left: 16px;
+            margin: 16px 0;
+            color: #6B7280;
+        }
+        
+        .two-column {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .two-column .column {
+            flex: 1;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .badge-action {
+            background: #DBEAFE;
+            color: #1D4ED8;
+        }
+        
+        .badge-education {
+            background: #EDE9FE;
+            color: #7C3AED;
+        }
+        
+        .badge-blank {
+            background: #D1FAE5;
+            color: #059669;
+        }
+        
+        @media print {
+            body { print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{% block form_title %}{{ form.title }}{% endblock %}</h1>
+        <p class="subtitle">
+            {% if form.type == 'action' %}
+                <span class="badge badge-action">Action Form</span>
+            {% elif form.type == 'education' %}
+                <span class="badge badge-education">Education Form</span>
+            {% else %}
+                <span class="badge badge-blank">Blank Document</span>
+            {% endif %}
+        </p>
+    </div>
+    
+    <div class="meta-info">
+        <div class="row">
+            <span class="label">Form ID:</span>
+            <span class="value">{{ form.id }}</span>
+        </div>
+        <div class="row">
+            <span class="label">Type:</span>
+            <span class="value">
+                {% if form.type == 'action' %}Action Form
+                {% elif form.type == 'education' %}Education Form
+                {% else %}Blank Document{% endif %}
+            </span>
+        </div>
+        <div class="row">
+            <span class="label">Created by:</span>
+            <span class="value">{{ form.created_by.username }}</span>
+        </div>
+        <div class="row">
+            <span class="label">Created:</span>
+            <span class="value">{{ form.created_at|date:"M d, Y H:i" }}</span>
+        </div>
+        <div class="row">
+            <span class="label">Last updated:</span>
+            <span class="value">{{ form.updated_at|date:"M d, Y H:i" }}</span>
+        </div>
+    </div>
+    
+    {% block content %}{% endblock %}
+</body>
+</html>

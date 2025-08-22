@@ -1,0 +1,27 @@
+{% extends "exports/base_form.html" %}
+
+{% block content %}
+    {% for section_title, fields in sections %}
+    <div class="section">
+        <h2 class="section-title">{{ section_title }}</h2>
+        <div class="two-column">
+            <div class="column">
+                {% for label, value in fields|slice:":3" %}
+                <div class="field-group">
+                    <span class="field-label">{{ label }}:</span>
+                    <div class="field-value">{{ value|default:"" }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="column">
+                {% for label, value in fields|slice:"3:" %}
+                <div class="field-group">
+                    <span class="field-label">{{ label }}:</span>
+                    <div class="field-value">{{ value|default:"" }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% endblock %}

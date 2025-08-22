@@ -1,0 +1,254 @@
+
+# ==== Local Dev Scripts (Do not track) ====
+runserver.sh
+
+# ========================
+# Django / Python Backend
+# ========================
+
+# Python Virtual Environment
+venv/
+sdg_venv/
+env/
+ENV/
+.venv/
+.ENV/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution/Packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Django Related
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Media Files and Static Files
+media/
+staticfiles/
+static/
+
+# Environment Variable Files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Django Debugging
+.coverage
+htmlcov/
+
+# ========================
+# React / Node.js Frontend
+# ========================
+
+# Dependencies
+frontend/node_modules/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build Files
+frontend/build/
+frontend/dist/
+build/
+dist/
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# ESLint cache
+.eslintcache
+
+# ========================
+# Editor and IDE Documentation
+# ========================
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# PyCharm
+.idea/
+*.swp
+*.swo
+*~
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# ========================
+# Operating System Files
+# ========================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ========================
+# Deployment and Configuration Files
+# ========================
+
+# Docker
+.dockerignore
+settings_docker.py
+
+# Log Files
+logs/
+*.log
+
+# Temporary Files
+tmp/
+temp/
+
+# Cache Directory
+.cache/
+.parcel-cache/
+
+# Test Coverage Report
+coverage/
+.coverage
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# ========================
+# Sensitive Information and keys
+# ========================
+
+# Environment Variables and Configuration Files
+*.key
+*.pem
+*.p12
+*.p8
+.env*
+!.env.example
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup Files
+*.bak
+*.backup
+*.sql
+
+# ========================
+# Project Specific Files
+# ========================
+
+# Database
+sdg_backup.sql
+database/
+
+# Custom Configuration
+config/local.py
+settings/local.py
+
+# Compiled Files
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Compressed Files
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+
+# ========================
+# Vercel Deployment Files
+# ========================
+.vercel
+
+# ========================
+# Railway Deployment Files
+# ========================
+.railway

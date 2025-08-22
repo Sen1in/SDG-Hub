@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # MySQL
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: sdg_local
+      MYSQL_USER: sdg_user
+      MYSQL_PASSWORD: 12345
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Redis Channel Layer
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 10s
+      retries: 5
+    command: redis-server --appendonly yes
+
+  # Backend (ASGI + WebSocket)
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sdg_backend
+    environment:
+      - DATABASE_HOST=db
+      - DATABASE_PORT=3306
+      - DATABASE_NAME=sdg_local
+      - DATABASE_USER=sdg_user
+      - DATABASE_PASSWORD=12345
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - DEBUG=False
+      - ALLOWED_HOSTS=localhost,127.0.0.1,frontend,sdg_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - media_files:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: celery_worker
+    environment:
+      - DATABASE_HOST=db
+      - DATABASE_PORT=3306
+      - DATABASE_NAME=sdg_local
+      - DATABASE_USER=sdg_user
+      - DATABASE_PASSWORD=12345
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+    command: celery -A sdg_backend worker -l info
+    volumes:
+      - media_files:/app/media
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sdg_frontend
+    environment:
+      - REACT_APP_API_URL=http://localhost
+      - REACT_APP_WS_URL=ws://localhost
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+volumes:
+  mysql_data:
+  redis_data:
+  media_files:
+
+networks:
+  app-network:
+    driver: bridge
