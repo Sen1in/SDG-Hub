@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     netcat-traditional \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
-    libgdk-pixbuf2.0-0 \
+    libgdk-pixbuf-xlib-2.0-0 \
     libcairo-gobject2 \
     libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*

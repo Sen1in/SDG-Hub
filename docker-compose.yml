@@ -24,7 +24,7 @@ services:
 
   # Redis Channel Layer
   redis:
-    image: redis:7-alpine
+    image: redis:alpine
     container_name: redis_cache
     ports:
       - "6379:6379"
@@ -54,7 +54,7 @@ services:
       - REDIS_PORT=6379
       - REDIS_DB=0
       - DEBUG=False
-      - ALLOWED_HOSTS=localhost,127.0.0.1,frontend,sdg_backend
+      - ALLOWED_HOSTS=localhost,127.0.0.1,frontend,sdg_backend,149.28.177.238
     ports:
       - "8000:8000"
     volumes:
@@ -98,8 +98,8 @@ services:
       dockerfile: Dockerfile
     container_name: sdg_frontend
     environment:
-      - REACT_APP_API_URL=http://localhost
-      - REACT_APP_WS_URL=ws://localhost
+      - REACT_APP_API_URL=http://149.28.177.238
+      - REACT_APP_WS_URL=ws://149.28.177.238
     ports:
       - "80:80"
     depends_on:

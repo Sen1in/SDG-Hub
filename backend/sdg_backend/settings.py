@@ -15,7 +15,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-your-secret-key-here-change-in-production'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,backend,frontend').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,backend,frontend,149.28.177.238').split(',')
 
 # Application definition
 DJANGO_APPS = [
@@ -190,6 +190,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:80",
     "http://localhost",
     "http://frontend",
+    "http://149.28.177.238"
     ]
 
 CORS_ALLOW_CREDENTIALS = True
