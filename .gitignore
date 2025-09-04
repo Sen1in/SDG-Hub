@@ -254,7 +254,7 @@ settings/local.py
 .railway
 
 # HTTPS setup file
-setup-https.sh
+# setup-https.sh
 
 # HTTPS/SSL certificates
 certbot/
