@@ -26,7 +26,7 @@ RUN apk add --no-cache openssl curl
 COPY --from=build /app/build /usr/share/nginx/html
 
 # Copy the nginx configuration
-COPY nginx-https.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Create directories for certificates and challenges
 RUN mkdir -p /var/www/certbot \
