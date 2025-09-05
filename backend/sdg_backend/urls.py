@@ -23,6 +23,7 @@ urlpatterns = [
     path('api/team/', include('apps.team.urls')),
     path('api/', include('apps.form.urls')), # Fixed spelling error here
     path('api/search/', include('apps.search.urls')), 
+    path('api/notifications/', include('apps.notifications.urls')),
 ]
 
 

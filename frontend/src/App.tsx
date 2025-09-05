@@ -16,6 +16,7 @@ import UserProfile from './pages/UserProfile/UserProfile';
 import TermsNConditions from './pages/Auth/TermNConditions';
 import TeamPage from './pages/Team/TeamPage';
 import TeamDetails from './pages/Team/TeamDetail';
+import  NotificationsPage from './pages/Notifications/NotificationPages';
 import { AuthProvider } from './contexts/AuthContext';
 import PageTracker from './components/Layout/PageTracker';
 import { NotificationProvider } from './hooks/useNotification';
@@ -68,6 +69,7 @@ function App() {
             <Route path="/team/:teamId" element={<TeamDetails />} />
             <Route path="/team/:teamId/forms" element={<TeamForms />} />
             <Route path="/team/:teamId/forms/:formId" element={<CollaborativeForm />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/liked" element={<LikedPage />} />
             
             <Route path="/search" element={<Layout><SearchResultPage /></Layout>} />
