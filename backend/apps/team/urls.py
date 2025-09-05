@@ -17,4 +17,7 @@ urlpatterns = [
     
     # User validation
     path('check-user/', views.check_user_exists, name='check-user'),
+
+    # Update team capacity
+    path('<int:team_id>/capacity/', views.update_team_capacity, name='update-team-capacity'),
 ]

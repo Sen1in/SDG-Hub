@@ -1,13 +1,14 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 
 class Team(models.Model):
     """Team model"""
     name = models.CharField(max_length=100, unique=True, db_index=True)
     max_members = models.PositiveIntegerField(
-        default=10,
-        validators=[MinValueValidator(1), MaxValueValidator(100)]
+        default=2,  # 默认值改为2
+        validators=[MinValueValidator(1), MaxValueValidator(6)]  # 范围改为1-6
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -31,6 +32,27 @@ class Team(models.Model):
     def get_owner(self):
         """Get team owner"""
         return self.memberships.filter(role='owner').first()
+    
+    def clean(self):
+        """Additional validation"""
+        # Ensure max_members is within range
+        if self.max_members < 1:
+            raise ValidationError({'max_members': 'Team must have at least 1 member.'})
+        if self.max_members > 6:
+            raise ValidationError({'max_members': 'Team cannot exceed 6 members.'})
+        
+        # If updating existing team, ensure capacity is not less than current member count
+        if self.pk:  # Only check if this is an update (pk exists)
+            current_count = self.member_count
+            if self.max_members < current_count:
+                raise ValidationError({
+                    'max_members': f'Capacity cannot be less than current member count ({current_count}).'
+                })
+    
+    def save(self, *args, **kwargs):
+        """Override save to validate before saving"""
+        self.full_clean()  # This will call clean() method
+        super().save(*args, **kwargs)
 
 class TeamMembership(models.Model):
     """Team membership model"""

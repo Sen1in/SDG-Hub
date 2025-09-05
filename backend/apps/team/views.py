@@ -355,3 +355,82 @@ def remove_member(request, team_id, member_id):
     return Response({
         'message': f'Successfully removed {removed_username} from the team'
     }, status=status.HTTP_200_OK)
+
+@api_view(['PATCH'])
+@permission_classes([permissions.IsAuthenticated])
+def update_team_capacity(request, team_id):
+    """Update team capacity - only team owner can perform this action"""
+    team = get_object_or_404(Team, id=team_id)
+    
+    # Check if current user is team owner
+    membership = TeamMembership.objects.filter(
+        user=request.user, 
+        team=team,
+        role='owner'
+    ).first()
+    
+    if not membership:
+        return Response(
+            {'error': 'Only team owner can manage team capacity'}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Get new capacity
+    new_capacity = request.data.get('max_members')
+    
+    if new_capacity is None:
+        return Response(
+            {'error': 'max_members is required'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        new_capacity = int(new_capacity)
+    except (TypeError, ValueError):
+        return Response(
+            {'error': 'max_members must be a valid number'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate capacity range (1-6)
+    if new_capacity < 1:
+        return Response(
+            {'error': 'Capacity must be at least 1'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if new_capacity > 6:
+        return Response(
+            {'error': 'Capacity cannot exceed 6 members'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if new capacity is not less than current member count
+    if new_capacity < team.member_count:
+        return Response(
+            {
+                'error': f'Capacity cannot be less than current member count ({team.member_count})',
+                'current_members': team.member_count,
+                'requested_capacity': new_capacity
+            }, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # No need to update if capacity hasn't changed
+    if new_capacity == team.max_members:
+        return Response({
+            'message': 'Team capacity unchanged',
+            'max_members': team.max_members
+        }, status=status.HTTP_200_OK)
+    
+    # Update team capacity
+    team.max_members = new_capacity
+    team.save()
+    
+    # Return updated team info
+    serializer = TeamDetailSerializer(team, context={'request': request})
+    
+    return Response({
+        'message': f'Successfully updated team capacity to {new_capacity}',
+        'team': serializer.data
+    }, status=status.HTTP_200_OK)

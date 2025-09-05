@@ -11,6 +11,11 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
   const [maxMembers, setMaxMembers] = useState<string>('');
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
+  // Constants for capacity limits
+  const DEFAULT_CAPACITY = 2;
+  const MIN_CAPACITY = 1;
+  const MAX_CAPACITY = 6;
+
   // Form validation
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
@@ -23,12 +28,16 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
       newErrors.teamName = 'Team name must be less than 50 characters';
     }
 
-    if (!maxMembers || parseInt(maxMembers) < 1) {
-      newErrors.maxMembers = 'Team must have at least 1 member';
-    } else if (parseInt(maxMembers) > 100) {
-      newErrors.maxMembers = 'Team cannot exceed 100 members';
-    } else if (isNaN(parseInt(maxMembers))) {
-      newErrors.maxMembers = 'Please enter a valid number';
+    // Validate max members (optional field)
+    if (maxMembers.trim()) {
+      const memberCount = parseInt(maxMembers);
+      if (isNaN(memberCount)) {
+        newErrors.maxMembers = 'Please enter a valid number';
+      } else if (memberCount < MIN_CAPACITY) {
+        newErrors.maxMembers = `Team must have at least ${MIN_CAPACITY} member`;
+      } else if (memberCount > MAX_CAPACITY) {
+        newErrors.maxMembers = `Team cannot exceed ${MAX_CAPACITY} members`;
+      }
     }
 
     setErrors(newErrors);
@@ -46,9 +55,12 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
     setErrors({});
     
     try {
+      // Use default capacity if not specified
+      const capacity = maxMembers.trim() ? parseInt(maxMembers) : DEFAULT_CAPACITY;
+      
       const teamData: CreateTeamRequest = {
         name: teamName.trim(),
-        max_members: parseInt(maxMembers)
+        max_members: capacity
       };
       
       console.log('Preparing to create team with data:', teamData);
@@ -165,10 +177,11 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
               </p>
             </div>
 
-            {/* Maximum members input */}
+            {/* Maximum members input (Optional) */}
             <div>
               <label htmlFor="maxMembers" className="block text-sm font-medium text-gray-700 mb-2">
-                Maximum Members <span className="text-red-500">*</span>
+                Maximum Members 
+                <span className="text-gray-500 text-xs ml-2">(Optional)</span>
               </label>
               <input
                 type="text"
@@ -178,7 +191,8 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
                 value={maxMembers}
                 onChange={(e) => {
                   const value = e.target.value.replace(/[^0-9]/g, '');
-                  if (value.length <= 3) {
+                  // Only allow single digit since max is 6
+                  if (value.length <= 1) {
                     setMaxMembers(value);
                   }
                   if (errors.maxMembers) {
@@ -190,16 +204,16 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
                     ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
                     : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
                 }`}
-                placeholder="Enter maximum number of members"
+                placeholder={`Default: ${DEFAULT_CAPACITY} members`}
                 disabled={isLoading}
-                maxLength={3}
+                maxLength={1}
                 autoComplete="off"
               />
               {errors.maxMembers && (
                 <p className="mt-1 text-sm text-red-600">{errors.maxMembers}</p>
               )}
               <p className="mt-1 text-xs text-gray-500">
-                Enter a number between 1 and 100. You can change this limit later in team settings.
+                Enter a number between {MIN_CAPACITY} and {MAX_CAPACITY}. If left empty, defaults to {DEFAULT_CAPACITY} members.
               </p>
             </div>
 
@@ -222,7 +236,7 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={!teamName.trim() || !maxMembers.trim() || isLoading}
+                disabled={!teamName.trim() || isLoading}
                 className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center"
               >
                 {isLoading ? (

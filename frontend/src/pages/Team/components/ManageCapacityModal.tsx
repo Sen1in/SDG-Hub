@@ -23,9 +23,9 @@ const ManageCapacityModal: React.FC<ManageCapacityModalProps> = ({
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Constants definition
+  // Constants definition - Updated to match CreateTeamModal
   const MIN_CAPACITY = 1;
-  const MAX_CAPACITY = 100;
+  const MAX_CAPACITY = 6;
 
   // Permission check
   const hasPermission = currentUserRole === 'owner';
@@ -50,7 +50,7 @@ const ManageCapacityModal: React.FC<ManageCapacityModalProps> = ({
     } else if (capacityNum < MIN_CAPACITY) {
       newErrors.capacity = `Capacity must be at least ${MIN_CAPACITY}`;
     } else if (capacityNum > MAX_CAPACITY) {
-      newErrors.capacity = `Capacity cannot exceed ${MAX_CAPACITY}`;
+      newErrors.capacity = `Capacity cannot exceed ${MAX_CAPACITY} members`;
     } else if (capacityNum < currentMemberCount) {
       newErrors.capacity = `Capacity cannot be less than current member count (${currentMemberCount})`;
     }
@@ -127,8 +127,8 @@ const ManageCapacityModal: React.FC<ManageCapacityModalProps> = ({
   const handleCapacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     
-    // Only allow numeric input
-    if (value === '' || /^\d+$/.test(value)) {
+    // Only allow numeric input, limit to 1 digit since max is 6
+    if (value === '' || (/^\d$/.test(value) && parseInt(value) >= 0)) {
       setCapacity(value);
       // Clear related errors
       if (errors.capacity) {
@@ -224,8 +224,8 @@ const ManageCapacityModal: React.FC<ManageCapacityModalProps> = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="text-sm text-blue-700">
-                <p><strong>Current capacity:</strong> {currentCapacity} members</p>
-                <p><strong>Current members:</strong> {currentMemberCount} members</p>
+                <p><strong>Current capacity:</strong> {currentCapacity} {currentCapacity === 1 ? 'member' : 'members'}</p>
+                <p><strong>Current members:</strong> {currentMemberCount} {currentMemberCount === 1 ? 'member' : 'members'}</p>
               </div>
             </div>
           </div>
@@ -247,8 +247,9 @@ const ManageCapacityModal: React.FC<ManageCapacityModalProps> = ({
                     ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
                     : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
                 }`}
-                placeholder="Enter team capacity"
+                placeholder="Enter team capacity (1-6)"
                 disabled={isDisabled}
+                maxLength={1}
                 autoFocus
                 autoComplete="off"
               />
