@@ -11,7 +11,7 @@ const TermsOfService: React.FC = () => {
           <div className="text-center border-b border-gray-200 p-8">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">SDG Knowledge System Terms of Use</h1>
             <div className="bg-gray-100 p-3 rounded-lg inline-block">
-              <p className="text-sm text-gray-600">Last Update: December 28, 2024</p>
+              <p className="text-sm text-gray-600">Last Update: Sep 2025</p>
             </div>
           </div>
 
@@ -94,11 +94,14 @@ const TermsOfService: React.FC = () => {
                   If you notice any violation of laws and regulations or breach of these Terms or you have any opinions or suggestions regarding these Terms or the Services, you can contact us through the following methods:
                 </p>
                 <div className="bg-gray-50 p-6 rounded-lg">
-                  <p className="text-gray-700 mb-2"><strong>Online Complaints and Feedback Portal:</strong> Click the "Contact us" button on the product interface after logging in.</p>
+                  <p className="text-gray-700 mb-2">
+                    <strong>Online Complaints and Feedback Portal:</strong> Click the "Contact us" button on the product interface after logging in.
+                  </p>
                   <p className="text-gray-700">
-                    <strong>Contact Email:</strong> 
-                    <a href="mailto:service@sdgknowledge.com" className="text-blue-600 hover:underline ml-1">service@sdgknowledge.com</a> (General Support) / 
-                    <a href="mailto:privacy@sdgknowledge.com" className="text-blue-600 hover:underline ml-1">privacy@sdgknowledge.com</a> (Privacy Matters)
+                    <strong>Email:</strong>
+                    <a href="mailto:contactus@sdg.unswzoo.com" className="text-blue-600 hover:underline ml-1">
+                      <strong className="font-semibold">contactus@</strong>sdg.unswzoo.com
+                    </a>
                   </p>
                 </div>
               </section>
