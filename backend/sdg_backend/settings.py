@@ -50,6 +50,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'sdg_backend.middleware.CharsetMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -126,6 +127,11 @@ TIME_ZONE = 'Australia/Sydney'
 USE_I18N = True
 USE_TZ = True
 
+# Character encoding settings
+DEFAULT_CHARSET = 'utf-8'
+DEFAULT_CONTENT_TYPE = 'text/html'
+FILE_CHARSET = 'utf-8'
+
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
@@ -156,6 +162,10 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_CONTENT_TYPE': 'application/json; charset=utf-8',
 }
 
 # JWT settings
