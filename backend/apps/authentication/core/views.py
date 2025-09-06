@@ -63,17 +63,35 @@ def register(request):
     if serializer.is_valid():
         user = serializer.save()
         
+        # 转换邮件邀请为通知
+        try:
+            from apps.notifications.models import PendingEmailInvitation
+            converted_count = PendingEmailInvitation.convert_to_notifications(user)
+        except Exception as e:
+            # 如果转换失败，不影响注册流程
+            converted_count = 0
+            print(f"Failed to convert email invitations: {e}")
+        
         # Generate JWT tokens with auto last_login update
         refresh = AutoLoginRefreshToken.for_user(user)
         
-        return Response({
+        response_data = {
             'message': 'User created successfully',
             'user': UserSerializer(user).data,
             'tokens': {
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
             }
-        }, status=status.HTTP_201_CREATED)
+        }
+        
+        # 如果有转换的邀请，添加提示信息
+        if converted_count > 0:
+            response_data['team_invitations'] = {
+                'count': converted_count,
+                'message': f'You have {converted_count} team invitation(s) waiting in your notifications'
+            }
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -85,17 +103,35 @@ def login(request):
     if serializer.is_valid():
         user = serializer.validated_data['user']
         
+        # 检查并转换邮件邀请（每次登录时检查）
+        try:
+            from apps.notifications.models import PendingEmailInvitation
+            converted_count = PendingEmailInvitation.convert_to_notifications(user)
+        except Exception as e:
+            # 如果转换失败，不影响登录流程
+            converted_count = 0
+            print(f"Failed to convert email invitations: {e}")
+        
         # Generate JWT tokens with auto last_login update
         refresh = AutoLoginRefreshToken.for_user(user)
         
-        return Response({
+        response_data = {
             'message': 'Login successful',
             'user': UserSerializer(user).data,
             'tokens': {
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
             }
-        }, status=status.HTTP_200_OK)
+        }
+        
+        # 如果有新的邀请转换，添加提示信息
+        if converted_count > 0:
+            response_data['team_invitations'] = {
+                'count': converted_count,
+                'message': f'You have {converted_count} new team invitation(s)'
+            }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

@@ -43,6 +43,7 @@ LOCAL_APPS = [
     'apps.team.apps.TeamConfig',
     'apps.search.apps.SearchConfig',
     'apps.form.apps.FormConfig',
+    'apps.notifications.apps.NotificationsConfig',
     'api',
 ]
 
