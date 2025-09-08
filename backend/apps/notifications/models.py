@@ -26,7 +26,7 @@ class Notification(models.Model):
         choices=NOTIFICATION_TYPES,
         default='team_invitation'
     )
-    data = models.JSONField()  # 存储邀请详细信息
+    data = models.JSONField() 
     status = models.CharField(
         max_length=20, 
         choices=STATUS_CHOICES, 
@@ -59,11 +59,10 @@ class Notification(models.Model):
             status='pending'
         )
         count = expired_notifications.count()
-        expired_notifications.delete()  # 直接删除而不是标记过期
+        expired_notifications.delete()
         return count
 
 class PendingEmailInvitation(models.Model):
-    """待注册用户的邮件邀请"""
     email = models.EmailField()
     team_id = models.CharField(max_length=50)
     team_name = models.CharField(max_length=100)
@@ -72,16 +71,13 @@ class PendingEmailInvitation(models.Model):
     invited_by_email = models.BooleanField(default=True)
     invited_identifier = models.CharField(max_length=255)
     
-    # 邮件发送相关
     invitation_token = models.CharField(max_length=100, unique=True)
     email_sent = models.BooleanField(default=False)
     email_sent_at = models.DateTimeField(null=True, blank=True)
     
-    # 时间戳
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     
-    # 状态
     status = models.CharField(
         max_length=20,
         choices=[
@@ -106,12 +102,10 @@ class PendingEmailInvitation(models.Model):
     
     @property
     def is_expired(self):
-        """检查邀请是否已过期"""
         return timezone.now() > self.expires_at
     
     @classmethod
     def cleanup_expired_invitations(cls):
-        """清理过期的邮件邀请"""
         expired_invitations = cls.objects.filter(
             expires_at__lt=timezone.now(),
             status='pending'
@@ -122,7 +116,6 @@ class PendingEmailInvitation(models.Model):
     
     @classmethod
     def convert_to_notifications(cls, user):
-        """用户注册后，将邮件邀请转换为通知"""
         pending_invitations = cls.objects.filter(
             email=user.email,
             status='pending'
@@ -134,7 +127,6 @@ class PendingEmailInvitation(models.Model):
             try:
                 team = Team.objects.get(id=invitation.team_id)
                 
-                # 创建通知
                 notification = Notification.objects.create(
                     recipient=user,
                     notification_type='team_invitation',
@@ -150,7 +142,6 @@ class PendingEmailInvitation(models.Model):
                     status='pending'
                 )
                 
-                # 标记邮件邀请为已注册
                 invitation.status = 'registered'
                 invitation.save()
                 

@@ -193,7 +193,6 @@ def get_unread_count(request):
 @api_view(['POST'])
 @permission_classes([])  
 def validate_invitation_token(request):
-    """验证邀请令牌（用于注册页面）"""
     token = request.data.get('invitation_token')
     
     if not token:
@@ -218,7 +217,6 @@ def validate_invitation_token(request):
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def convert_email_invitations(request):
-    """用户注册/登录后转换邮件邀请为通知"""
     converted_count = PendingEmailInvitation.convert_to_notifications(request.user)
     
     return Response({
@@ -229,7 +227,6 @@ def convert_email_invitations(request):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def cleanup_notifications(request):
-    """手动清理过期通知和邮件邀请"""
     notifications_cleaned = Notification.cleanup_expired_notifications()
     invitations_cleaned = PendingEmailInvitation.cleanup_expired_invitations()
     
