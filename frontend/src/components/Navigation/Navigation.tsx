@@ -20,6 +20,7 @@ const Navigation: React.FC = () => {
     { name: 'SDG Actions', path: '/actions', icon: '🎯' },
     { name: 'SDG Education', path: '/education', icon: '📚' },
     { name: 'Keywords', path: '/keywords', icon: '🔍' },
+    { name: 'About Us', path: '/about-us', icon: 'ℹ️' },
   ];
 
   
