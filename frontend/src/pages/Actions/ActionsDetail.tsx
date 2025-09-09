@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { DetailHeader } from './components/detail/DetailHeader';
 import { QuickInfoGrid } from './components/detail/QuickInfoGrid';
 import { ContentSection } from './components/detail/ContentSection';
@@ -11,15 +11,16 @@ import { ErrorMessage } from './components/shared/ErrorMessage';
 import { useActionsDetail } from './hooks/useActionsDetail';
 import { safeArray, safeValue } from './utils/helpers';
 import { getSDGTitle } from './utils/sdg';
-
 import { useEffect, useState } from 'react';
 import { likeAction, unlikeAction, getLikedActionIds } from '../../services/likeService';
-
 import { useNotification } from '../../hooks/useNotification';
+import { trackPageVisit } from '../../services/tracker';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ActionsDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const location = useLocation();
   const { resource, loading, error, retry } = useActionsDetail(id);
 
   const { warning, error: notifyError } = useNotification();
@@ -44,6 +45,12 @@ const ActionsDetail: React.FC = () => {
     };
     fetchLiked();
   }, [resource?.id, notifyError]);
+
+  useEffect(() => {
+    if (resource?.id && user?.id) {
+      trackPageVisit(user.id.toString(), location.pathname);
+    }
+  }, [resource?.id, user?.id]);
 
   const toggleLike = async () => {
     const token = localStorage.getItem('accessToken');
@@ -90,7 +97,7 @@ const ActionsDetail: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       
       {/* Header */}
-      <DetailHeader resource={resource} liked={liked} onToggleLike={toggleLike} onBack={() => navigate(-1)}/>
+      <DetailHeader resource={resource} liked={liked} onToggleLike={toggleLike}/>
       
       {/* Quick Info Grid */}
       <QuickInfoGrid resource={resource} />

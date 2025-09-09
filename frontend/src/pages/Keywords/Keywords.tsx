@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ListHeader } from './components/list/ListHeader';
 import { FilterPanel } from './components/filters/FilterPanel';
-import { KeywordList } from './components/list/KeywordList';
+import { ResourceList } from './components/list/ResourceList';
 import { Pagination } from './components/shared/Pagination';
 import { ErrorMessage } from './components/shared/ErrorMessage';
 import { ItemsPerPageSelector } from './components/filters/ItemPerPageSelector';
@@ -12,9 +12,9 @@ import { usePagination } from './hooks/usePagination';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { trackSearch } from '../../services/tracker';
+import { trackClick } from '../../services/tracker';
 
 const Keywords: React.FC = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { filters, updateFilter, toggleSDG, clearFilters } = useKeywordFilters();
   const { currentPage, goToPage, resetPage } = usePagination();
@@ -27,8 +27,9 @@ const Keywords: React.FC = () => {
     itemsPerPage
   );
 
-  const handleKeywordClick = (keyword: string) => {
-    navigate(`/keywords/${encodeURIComponent(keyword)}`);
+  const handleKeywordClick = (keywordId: number) => {
+    console.log('Keyword clicked:', keywordId);
+    trackClick('keyword', keywordId);
   };
 
   const handleClearFilters = () => {
@@ -91,7 +92,7 @@ const Keywords: React.FC = () => {
 
           {/* Right Result */}
           <div className="lg:w-3/4">
-            <KeywordList
+            <ResourceList
               keywords={keywords}
               loading={loading}
               onKeywordClick={handleKeywordClick}

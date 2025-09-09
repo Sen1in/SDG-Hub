@@ -1,15 +1,25 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { DetailHeader } from './components/detail/DetailHeader';
 import { TargetCard } from './components/detail/TargetCard';
 import { LoadingSpinner } from './components/shared/LoadingSpinner';
 import { ErrorMessage } from './components/shared/ErrorMessage';
 import { useKeywordDetail } from './hooks/useKeywordDetail';
+import { useEffect } from 'react';
+import { trackPageVisit } from '../../services/tracker';
+import { useAuth } from '../../contexts/AuthContext';
 
 const KeywordDetail: React.FC = () => {
   const { keyword } = useParams<{ keyword: string }>();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const location = useLocation();
   const { keywordData, loading, error, retry } = useKeywordDetail(keyword);
+
+  useEffect(() => {
+    if (keywordData?.keyword && user?.id) {
+      trackPageVisit(user.id.toString(), location.pathname);
+    }
+  }, [keywordData?.keyword, user?.id]);
 
   if (loading) {
     return (
@@ -37,7 +47,6 @@ const KeywordDetail: React.FC = () => {
       <DetailHeader 
         keyword={keywordData.keyword}
         totalTargets={keywordData.total_targets}
-        onBack={() => navigate(-1)}
       />
 
       {/* Main Content */}
@@ -49,23 +58,6 @@ const KeywordDetail: React.FC = () => {
             <TargetCard key={`${target.sdg_number}-${target.target_code}-${index}`} target={target} />
           ))}
         </div>
-
-        {/* No Results */}
-        {keywordData.targets.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🔍</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">No targets found</h2>
-            <p className="text-gray-600 mb-6">
-              This keyword doesn't appear to be associated with any SDG targets in our database.
-            </p>
-            <button
-              onClick={() => navigate('/keywords')}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Back to Search
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
