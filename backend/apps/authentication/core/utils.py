@@ -57,6 +57,14 @@ def send_verification_email(email, code):
                 margin: 20px 0;
                 color: #856404;
             }}
+            .spam-notice {{
+                background: #e8f4f8;
+                border: 1px solid #bee5eb;
+                border-radius: 5px;
+                padding: 15px;
+                margin: 20px 0;
+                color: #0c5460;
+            }}
             .footer {{
                 text-align: center;
                 margin-top: 30px;
@@ -72,6 +80,10 @@ def send_verification_email(email, code):
         </div>
         
         <div class="content">
+            <div class="spam-notice">
+                <strong>📧 Email Notice:</strong> You don't often get email from contactus@sdg.unswzoo.com. Please check your spam/junk folder if you don't see this email in your inbox.
+            </div>
+            
             <h2>Hello!</h2>
             <p>Thank you for registering with SDG Knowledge System. To complete your registration, please use the verification code below:</p>
             
@@ -86,16 +98,18 @@ def send_verification_email(email, code):
                     <li>This code will expire in 5 minutes</li>
                     <li>Don't share this code with anyone</li>
                     <li>If you didn't request this code, please ignore this email</li>
+                    <li><strong>📁 Can't find this email? Please check your spam/junk folder</strong></li>
                 </ul>
             </div>
             
-            <p>If you're having trouble with registration, please contact our support team.</p>
+            <p>If you're having trouble with registration, please contact our support team at contactus@sdg.unswzoo.com.</p>
             
             <p>Best regards,<br>SDG Knowledge System Team</p>
         </div>
         
         <div class="footer">
             <p>This is an automated message, please do not reply to this email.</p>
+            <p>Contact us: contactus@sdg.unswzoo.com</p>
         </div>
     </body>
     </html>
@@ -103,6 +117,9 @@ def send_verification_email(email, code):
 
     plain_message = f"""
     SDG Knowledge System - Email Verification
+    
+    📧 EMAIL NOTICE: You don't often get email from contactus@sdg.unswzoo.com. 
+    Please check your spam/junk folder if you don't see this email in your inbox.
     
     Hello!
     
@@ -115,11 +132,14 @@ def send_verification_email(email, code):
     - This code will expire in 5 minutes
     - Don't share this code with anyone
     - If you didn't request this code, please ignore this email
+
+    If you're having trouble with registration, please contact our support team at contactus@sdg.unswzoo.com.
     
     Best regards,
     SDG Knowledge System Team
     
     This is an automated message, please do not reply to this email.
+    Contact us: contactus@sdg.unswzoo.com
     """
     
     try:
