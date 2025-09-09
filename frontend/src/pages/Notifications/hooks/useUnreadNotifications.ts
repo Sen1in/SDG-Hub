@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { notificationApiService } from '../utils/utils';
+import { useAuth } from '../../../contexts/AuthContext';
 
 export const useUnreadNotifications = (pollingInterval: number = 30000) => {
+  const { isAuthenticated } = useAuth();
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -11,7 +13,7 @@ export const useUnreadNotifications = (pollingInterval: number = 30000) => {
   const isActiveRef = useRef<boolean>(true);
 
   const fetchUnreadCount = useCallback(async () => {
-    if (!isActiveRef.current) return;
+    if (!isActiveRef.current || !isAuthenticated) return;
     
     try {
       setError(null);
@@ -21,7 +23,11 @@ export const useUnreadNotifications = (pollingInterval: number = 30000) => {
       }
     } catch (err) {
       if (isActiveRef.current) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch unread count');
+        if (err instanceof Error && err.message.includes('Authentication required')) {
+          setUnreadCount(0);
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to fetch unread count');
+        }
         console.error('Error fetching unread count:', err);
       }
     } finally {
@@ -29,16 +35,18 @@ export const useUnreadNotifications = (pollingInterval: number = 30000) => {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const startPolling = useCallback(() => {
+    if (!isAuthenticated) return;
+    
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
     
     fetchUnreadCount();
     intervalRef.current = setInterval(fetchUnreadCount, pollingInterval);
-  }, [fetchUnreadCount, pollingInterval]);
+  }, [fetchUnreadCount, pollingInterval, isAuthenticated]);
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) {
@@ -49,9 +57,19 @@ export const useUnreadNotifications = (pollingInterval: number = 30000) => {
 
   useEffect(() => {
     isActiveRef.current = true;
-    startPolling();
+    
+    if (isAuthenticated) {
+      startPolling();
+    } else {
+      stopPolling();
+      setUnreadCount(0);
+      setError(null);
+      setIsLoading(false);
+    }
 
     const handleVisibilityChange = () => {
+      if (!isAuthenticated) return;
+      
       if (document.hidden) {
         stopPolling();
       } else {
@@ -60,7 +78,9 @@ export const useUnreadNotifications = (pollingInterval: number = 30000) => {
     };
 
     const handleFocus = () => {
-      fetchUnreadCount();
+      if (isAuthenticated) {
+        fetchUnreadCount();
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -72,7 +92,7 @@ export const useUnreadNotifications = (pollingInterval: number = 30000) => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [startPolling, stopPolling, fetchUnreadCount]);
+  }, [startPolling, stopPolling, fetchUnreadCount, isAuthenticated]);
 
   return {
     unreadCount,
