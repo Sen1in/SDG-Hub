@@ -27,6 +27,7 @@ import ProtectedRoute from './components/Layout/ProtectedRoute'; // Import Prote
 import AnalyzePage from './pages/Analyze/AnalyzePage'; // Import AnalyzePage
 import CollaborativeForm from './pages/Form/components/CollaborativeForm';
 import ForceLoginRoute from './components/Navigation/ForceLoginRoute';
+import AboutUs from './pages/AboutUs/AboutUs';
 
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
         <NotificationProvider>
           <Routes>
             <Route path="/" element={<Layout><Home /></Layout>} />
+
             <Route path="/actions" element={<Layout><Actions /></Layout>} />
 
             <Route path="/actions/:id" element={
@@ -60,6 +62,8 @@ function App() {
                 <KeywordDetail />
               </ForceLoginRoute>
             } />
+
+            <Route path="/about-us" element={<Layout><AboutUs /></Layout>} />
 
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />

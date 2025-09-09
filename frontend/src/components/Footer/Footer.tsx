@@ -10,7 +10,7 @@ const Footer: React.FC = () => {
       { name: 'AI Assistant', path: '/chat' },
     ],
     'About': [
-      { name: 'About Us', path: '/about' },
+      { name: 'About Us', path: '/about-us' },
       { name: 'Contact', path: '/contact' },
       { name: 'Documentation', path: '/docs' },
       { name: 'API', path: '/api' },
