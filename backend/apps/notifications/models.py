@@ -1,9 +1,8 @@
-# apps/notifications/models.py
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
-
+from django.db import transaction
 class Notification(models.Model):
     NOTIFICATION_TYPES = [
         ('team_invitation', 'Team Invitation'),
@@ -42,18 +41,21 @@ class Notification(models.Model):
             models.Index(fields=['recipient', 'status']),
             models.Index(fields=['expires_at']),
         ]
+        # No unique constraint here - users can receive multiple team invitations
     
     def __str__(self):
         return f"{self.notification_type} for {self.recipient.username}"
     
     @property
     def is_expired(self):
-        """检查通知是否已过期"""
         return timezone.now() > self.expires_at
+    
+    def mark_as_expired(self):
+        self.status = 'expired'
+        self.save()
     
     @classmethod
     def cleanup_expired_notifications(cls):
-        """清理过期的通知 - 直接删除"""
         expired_notifications = cls.objects.filter(
             expires_at__lt=timezone.now(),
             status='pending'
@@ -122,32 +124,43 @@ class PendingEmailInvitation(models.Model):
         )
         
         converted_count = 0
-        for invitation in pending_invitations:
-            from apps.team.models import Team
-            try:
-                team = Team.objects.get(id=invitation.team_id)
-                
-                notification = Notification.objects.create(
-                    recipient=user,
-                    notification_type='team_invitation',
-                    data={
-                        'team_id': invitation.team_id,
-                        'team_name': invitation.team_name,
-                        'inviter_username': invitation.inviter_username,
-                        'inviter_email': invitation.inviter_email,
-                        'invited_by_email': invitation.invited_by_email,
-                        'invited_identifier': invitation.invited_identifier,
-                    },
-                    expires_at=invitation.expires_at,
-                    status='pending'
-                )
-                
-                invitation.status = 'registered'
-                invitation.save()
-                
-                converted_count += 1
-                
-            except Team.DoesNotExist:
-                invitation.delete()
+        
+        with transaction.atomic():
+            for invitation in pending_invitations:
+                from apps.team.models import Team
+                try:
+                    team = Team.objects.get(id=invitation.team_id)
+                    
+                    # Check if notification already exists for this team
+                    existing_notification = Notification.objects.filter(
+                        recipient=user,
+                        notification_type='team_invitation',
+                        status='pending',
+                        data__team_id=invitation.team_id
+                    ).first()
+                    
+                    if not existing_notification:
+                        notification = Notification.objects.create(
+                            recipient=user,
+                            notification_type='team_invitation',
+                            data={
+                                'team_id': invitation.team_id,
+                                'team_name': invitation.team_name,
+                                'inviter_username': invitation.inviter_username,
+                                'inviter_email': invitation.inviter_email,
+                                'invited_by_email': invitation.invited_by_email,
+                                'invited_identifier': invitation.invited_identifier,
+                            },
+                            expires_at=invitation.expires_at,
+                            status='pending'
+                        )
+                        converted_count += 1
+                    
+                    # Mark email invitation as processed
+                    invitation.status = 'registered'
+                    invitation.save()
+                    
+                except Team.DoesNotExist:
+                    invitation.delete()
         
         return converted_count

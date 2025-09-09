@@ -6,6 +6,7 @@ from django.db.models import Prefetch
 from django.contrib.auth.models import User
 from .models import Team, TeamMembership
 from apps.notifications.models import Notification
+from django.db import transaction
 from datetime import timedelta
 from django.utils import timezone
 from .serializers import (
@@ -99,7 +100,7 @@ def leave_team(request, team_id):
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def invite_member(request, team_id):
-    """Invite member to join team - supports username or email, handles unregistered users"""
+    """Invite member to join team - prevents duplicate invitations to the same team"""
     team = get_object_or_404(Team, id=team_id)
     
     # Check permissions (only owner and editors can invite)
@@ -115,7 +116,6 @@ def invite_member(request, team_id):
             status=status.HTTP_403_FORBIDDEN
         )
     
-    # Get invitation parameters - supports username or email
     username = request.data.get('username')
     email = request.data.get('email')
     
@@ -125,180 +125,153 @@ def invite_member(request, team_id):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Find user - prioritize email, then username
-    user_to_invite = None
-    invited_by_email = False
-    invited_identifier = ''
-    
-    if email:
-        try:
-            user_to_invite = User.objects.get(email=email)
-            invited_by_email = True
-            invited_identifier = email
-        except User.DoesNotExist:
-            # 用户不存在，发送邮件邀请
-            from apps.notifications.services import EmailInvitationService
-            from apps.notifications.models import PendingEmailInvitation
+    try:
+        with transaction.atomic():
+            user_to_invite = None
+            invited_by_email = False
+            invited_identifier = ''
             
-            # 检查是否已有待处理的邮件邀请
-            existing_email_invitation = PendingEmailInvitation.objects.filter(
-                email=email,
-                team_id=str(team.id),
-                status='pending'
-            ).first()
+            # Handle email invitation
+            if email:
+                try:
+                    user_to_invite = User.objects.get(email=email)
+                    invited_by_email = True
+                    invited_identifier = email
+                except User.DoesNotExist:
+                    # Handle unregistered user email invitation
+                    from apps.notifications.services import EmailInvitationService
+                    from apps.notifications.models import PendingEmailInvitation
+                    
+                    existing_email_invitation = PendingEmailInvitation.objects.filter(
+                        email=email,
+                        team_id=str(team.id),
+                        status='pending'
+                    ).first()
+                    
+                    if existing_email_invitation:
+                        return Response({
+                            'error': f'An invitation has already been sent to {email}',
+                            'invitation_id': existing_email_invitation.id
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    if team.member_count >= team.max_members:
+                        return Response({
+                            'error': 'Team is full',
+                            'current_members': team.member_count,
+                            'max_members': team.max_members
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    # Create and send email invitation
+                    invitation = EmailInvitationService.create_email_invitation(
+                        email=email,
+                        team_id=team.id,
+                        team_name=team.name,
+                        inviter_username=request.user.username,
+                        inviter_email=request.user.email,
+                        invited_identifier=email
+                    )
+                    
+                    email_sent = EmailInvitationService.send_invitation_email(invitation)
+                    
+                    if email_sent:
+                        return Response({
+                            'message': f'Invitation email sent to {email}',
+                            'invitation': {
+                                'id': str(invitation.id),
+                                'email': email,
+                                'team_name': team.name,
+                                'expires_at': invitation.expires_at.isoformat()
+                            }
+                        }, status=status.HTTP_201_CREATED)
+                    else:
+                        return Response(
+                            {'error': 'Failed to send invitation email'}, 
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        )
+                        
+            # Handle username invitation
+            elif username:
+                try:
+                    user_to_invite = User.objects.get(username=username)
+                    invited_by_email = False
+                    invited_identifier = username
+                except User.DoesNotExist:
+                    return Response(
+                        {'error': f'No user found with username: {username}'}, 
+                        status=status.HTTP_404_NOT_FOUND
+                    )
             
-            if existing_email_invitation:
-                return Response(
-                    {
-                        'error': f'An invitation has already been sent to {email}',
-                        'invitation_id': existing_email_invitation.id
-                    }, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # 检查团队是否已满
-            if team.member_count >= team.max_members:
-                return Response(
-                    {
+            # If user found, create notification invitation
+            if user_to_invite:
+                # Basic validation
+                if not user_to_invite.is_active:
+                    return Response(
+                        {'error': 'User account is inactive'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Check if already a member
+                if TeamMembership.objects.filter(user=user_to_invite, team=team).exists():
+                    return Response({
+                        'error': f'User {user_to_invite.username} is already a member of this team'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Check team capacity
+                if team.member_count >= team.max_members:
+                    return Response({
                         'error': 'Team is full',
                         'current_members': team.member_count,
                         'max_members': team.max_members
-                    }, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # 创建邮件邀请
-            invitation = EmailInvitationService.create_email_invitation(
-                email=email,
-                team_id=team.id,
-                team_name=team.name,
-                inviter_username=request.user.username,
-                inviter_email=request.user.email,
-                invited_identifier=email
-            )
-            
-            # 发送邮件
-            email_sent = EmailInvitationService.send_invitation_email(invitation)
-            
-            if email_sent:
-                return Response({
-                    'message': f'Invitation email sent to {email}. They will receive a team invitation after registering.',
-                    'invitation': {
-                        'id': str(invitation.id),
-                        'email': email,
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Check for existing invitation to THIS specific team
+                existing_invitation = Notification.objects.filter(
+                    recipient=user_to_invite,
+                    notification_type='team_invitation',
+                    status='pending',
+                    data__team_id=str(team.id)
+                ).first()
+                
+                if existing_invitation:
+                    return Response({
+                        'error': f'User {user_to_invite.username} already has a pending invitation to this team',
+                        'invitation_id': existing_invitation.id
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Create new invitation
+                expires_at = timezone.now() + timedelta(days=7)
+                
+                notification = Notification.objects.create(
+                    recipient=user_to_invite,
+                    notification_type='team_invitation',
+                    data={
+                        'team_id': str(team.id),
                         'team_name': team.name,
-                        'expires_at': invitation.expires_at.isoformat(),
-                        'email_sent': True
-                    }
-                }, status=status.HTTP_201_CREATED)
-            else:
-                return Response(
-                    {'error': 'Failed to send invitation email. Please try again later.'}, 
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        'inviter_username': request.user.username,
+                        'inviter_email': request.user.email,
+                        'invited_by_email': invited_by_email,
+                        'invited_identifier': invited_identifier,
+                    },
+                    expires_at=expires_at,
+                    status='pending'
                 )
                 
-    elif username:
-        try:
-            user_to_invite = User.objects.get(username=username)
-            invited_by_email = False
-            invited_identifier = username
-        except User.DoesNotExist:
-            return Response(
-                {'error': f'No user found with username: {username}. Username invitations require existing users.'}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-    
-    # 如果找到了用户，继续正常的邀请流程
-    if user_to_invite:
-        # Validate user exists and is active
-        if not user_to_invite.is_active:
-            return Response(
-                {'error': 'User account is inactive'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Check if user is already a team member
-        existing_membership = TeamMembership.objects.filter(
-            user=user_to_invite, 
-            team=team
-        ).first()
-        
-        if existing_membership:
-            return Response(
-                {
-                    'error': f'User {user_to_invite.username} is already a member of this team',
-                    'current_role': existing_membership.role
-                }, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Check if team is full
-        if team.member_count >= team.max_members:
-            return Response(
-                {
-                    'error': 'Team is full',
-                    'current_members': team.member_count,
-                    'max_members': team.max_members
-                }, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Check if there's already a pending invitation for this user to this team
-        from apps.notifications.models import Notification
-        existing_invitation = Notification.objects.filter(
-            recipient=user_to_invite,
-            notification_type='team_invitation',
-            status='pending',
-            data__team_id=str(team.id)
-        ).first()
-        
-        if existing_invitation:
-            return Response(
-                {
-                    'error': f'User {user_to_invite.username} already has a pending invitation to this team',
-                    'invitation_id': existing_invitation.id
-                }, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Create notification instead of direct membership
-        from datetime import timedelta
-        from django.utils import timezone
-        
-        expires_at = timezone.now() + timedelta(days=7)
-        
-        notification = Notification.objects.create(
-            recipient=user_to_invite,
-            notification_type='team_invitation',
-            data={
-                'team_id': str(team.id),
-                'team_name': team.name,
-                'inviter_username': request.user.username,
-                'inviter_email': request.user.email,
-                'invited_by_email': invited_by_email,
-                'invited_identifier': invited_identifier,
-            },
-            expires_at=expires_at,
-            status='pending'
+                return Response({
+                    'message': f'Successfully sent invitation to {user_to_invite.username}',
+                    'notification': {
+                        'id': str(notification.id),
+                        'recipient': user_to_invite.username,
+                        'team_name': team.name,
+                        'expires_at': expires_at.isoformat(),
+                        'status': 'pending'
+                    }
+                }, status=status.HTTP_201_CREATED)
+                    
+    except Exception as e:
+        return Response(
+            {'error': f'Unexpected error: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-        
-        return Response({
-            'message': f'Successfully sent invitation to {user_to_invite.username}',
-            'notification': {
-                'id': str(notification.id),
-                'recipient': user_to_invite.username,
-                'team_name': team.name,
-                'expires_at': expires_at.isoformat(),
-                'status': 'pending'
-            }
-        }, status=status.HTTP_201_CREATED)
-    
-    # 这里不应该到达
-    return Response(
-        {'error': 'Unexpected error occurred'}, 
-        status=status.HTTP_500_INTERNAL_SERVER_ERROR
-    )
-
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def check_user_exists(request):
