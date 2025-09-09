@@ -28,7 +28,6 @@ export const EmailVerificationField: React.FC<EmailVerificationFieldProps> = ({
       setSent(true);
       setCountdown(60);
       
-
       const timer = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
@@ -40,6 +39,7 @@ export const EmailVerificationField: React.FC<EmailVerificationFieldProps> = ({
       }, 1000);
     } catch (error) {
       console.error('Send code error:', error);
+      setSent(false);
     } finally {
       setSending(false);
     }
@@ -90,15 +90,37 @@ export const EmailVerificationField: React.FC<EmailVerificationFieldProps> = ({
           {getButtonText()}
         </button>
       </div>
+      
       {error && (
         <p className="mt-2 text-sm text-red-600">
           {error}
         </p>
       )}
+      
+      {/* Enhanced success message with spam reminder */}
       {sent && !error && (
-        <p className="mt-2 text-sm text-green-600">
-          Verification code sent to {email}
-        </p>
+        <div className="mt-3 space-y-3">
+          {/* Success message */}
+          <div className="flex items-center gap-2 text-green-600">
+            <span className="text-green-600">✉️</span>
+            <p className="text-sm font-medium">
+              Verification code sent to {email}
+            </p>
+          </div>
+          
+          {/* Spam folder reminder */}
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+            <div className="flex items-start gap-2">
+              <span className="text-blue-600 text-sm">⚠️</span>
+              <div className="text-sm text-blue-800 space-y-2">
+                <p className="font-medium"> Can't find the email?</p>
+                <div className="space-y-1 text-blue-700">
+                  <p>• <strong>Check your spam/junk folder</strong></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
