@@ -14,4 +14,9 @@ urlpatterns = [
     path('<int:pk>/', views.NotificationDetailView.as_view(), name='notification-detail'),
     
     path('unread-count/', views.get_unread_count, name='unread-count'),
+    
+    path('validate-token/', views.validate_invitation_token, name='validate-invitation-token'),
+
+    path('convert-invitations/', views.convert_email_invitations, name='convert-email-invitations'),
+
 ]
