@@ -28,12 +28,14 @@ import AnalyzePage from './pages/Analyze/AnalyzePage'; // Import AnalyzePage
 import CollaborativeForm from './pages/Form/components/CollaborativeForm';
 import ForceLoginRoute from './components/Navigation/ForceLoginRoute';
 import AboutUs from './pages/AboutUs/AboutUs';
+import ScrollToTop from './components/ScrollToTop';
 
 
 function App() {
   return (
     <AuthProvider>
       <Router>
+        <ScrollToTop />
         <PageTracker />
         <NotificationProvider>
           <Routes>
