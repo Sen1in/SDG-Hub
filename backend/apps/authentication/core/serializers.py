@@ -3,6 +3,9 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from ..validation.validators import AuthValidationMixin, EmailValidator
 from .models import EmailVerificationCode
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from django.conf import settings
 
 class LoginSerializer(serializers.Serializer):
     """User login serializer"""
@@ -62,7 +65,60 @@ class LoginSerializer(serializers.Serializer):
         import re
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return re.match(email_pattern, input_str) is not None
+class GoogleLoginSerializer(serializers.Serializer):
+    """Google OAuth login serializer"""
+    credential = serializers.CharField()
 
+    def validate_credential(self, value):
+        """Validate Google ID token"""
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                value, 
+                requests.Request(), 
+                settings.GOOGLE_OAUTH2_CLIENT_ID
+            )
+
+            if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+                raise serializers.ValidationError('Wrong issuer.')
+
+            return idinfo
+        except ValueError as e:
+            raise serializers.ValidationError(f'Invalid token: {str(e)}')
+
+    def create_or_get_user(self, google_user_info):
+        """Create or get user from Google user info"""
+        google_id = google_user_info['sub']
+        email = google_user_info['email']
+        first_name = google_user_info.get('given_name', '')
+        last_name = google_user_info.get('family_name', '')
+        
+        username = f"sdg_{google_id}"
+        
+        try:
+            user = User.objects.get(username=username)
+            return user, False
+        except User.DoesNotExist:
+            if User.objects.filter(email=email).exists():
+                raise serializers.ValidationError(
+                    'An account with this email already exists. Please use regular login.'
+                )
+            
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name
+            )
+            
+            # Import UserProfile from profile subapp within authentication
+            try:
+                from ..profile.models import UserProfile
+                UserProfile.objects.create(user=user)
+            except ImportError:
+                print("UserProfile model not found, skipping profile creation")
+            
+            return user, True
+        
 class EmailCodeSerializer(serializers.Serializer):
     """Email verification code sender serializer"""
     email = serializers.EmailField()

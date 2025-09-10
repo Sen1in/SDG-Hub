@@ -17,6 +17,8 @@ SECRET_KEY = 'django-insecure-your-secret-key-here-change-in-production'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,backend,frontend,149.28.177.238,sdg.unswzoo.com').split(',')
 
+GOOGLE_OAUTH2_CLIENT_ID = os.getenv('GOOGLE_OAUTH2_CLIENT_ID')
+
 # Application definition
 DJANGO_APPS = [
     'django.contrib.admin',

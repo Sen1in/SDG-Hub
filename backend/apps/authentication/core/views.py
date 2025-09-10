@@ -10,6 +10,7 @@ from ..profile.serializers import UserSerializer
 from .models import EmailVerificationCode
 from .utils import send_verification_email
 from ..tokens import AutoLoginRefreshToken
+from .serializers import GoogleLoginSerializer
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
@@ -132,6 +133,54 @@ def login(request):
             }
         
         return Response(response_data, status=status.HTTP_200_OK)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def google_login(request):
+    """Google OAuth login"""
+    serializer = GoogleLoginSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        try:
+            google_user_info = serializer.validated_data['credential']
+            user, is_first_login = serializer.create_or_get_user(google_user_info)
+            
+            # Convert email invitations if any
+            try:
+                from apps.notifications.models import PendingEmailInvitation
+                converted_count = PendingEmailInvitation.convert_to_notifications(user)
+            except Exception as e:
+                converted_count = 0
+                print(f"Failed to convert email invitations: {e}")
+            
+            # Generate JWT tokens with auto last_login update
+            refresh = AutoLoginRefreshToken.for_user(user)
+            
+            response_data = {
+                'message': 'Google login successful',
+                'user': UserSerializer(user).data,
+                'tokens': {
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                },
+                'isFirstLogin': is_first_login
+            }
+            
+            # Add team invitations info if any
+            if converted_count > 0:
+                response_data['team_invitations'] = {
+                    'count': converted_count,
+                    'message': f'You have {converted_count} new team invitation(s)'
+                }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Google login failed: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

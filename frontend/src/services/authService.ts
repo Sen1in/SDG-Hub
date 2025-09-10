@@ -68,39 +68,40 @@ class AuthService {
   }
 
   async loginWithGoogle(credential: string): Promise<ApiResponse<any>> {
-    try {
-      const response = await fetch(`${API_BASE}/api/auth/google-login/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ credential }),
-      });
+  try {
+    const response = await fetch(`${API_BASE}/api/auth/google-login/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ credential }),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (response.ok) {
-        this.setTokens(data.tokens.access, data.tokens.refresh);
-        this.setUser(data.user);
-        
-        // Ensure isFirstLogin is included in the returned data
-        return { 
-          success: true, 
-          data: {
-            user: data.user,
-            tokens: data.tokens,
-            message: data.message,
-            isFirstLogin: data.isFirstLogin || false  
-          }
-        };
-      } else {
-        return { success: false, errors: data };
-      }
-    } catch (error) {
-      console.error('Google login error:', error);
-      return { success: false, errors: { general: 'Network error' } };
+    if (response.ok) {
+      this.setTokens(data.tokens.access, data.tokens.refresh);
+      this.setUser(data.user);
+      
+      // Ensure isFirstLogin is included in the returned data
+      return { 
+        success: true, 
+        data: {
+          user: data.user,
+          tokens: data.tokens,
+          message: data.message,
+          isFirstLogin: data.isFirstLogin || false
+        }
+      };
+    } else {
+      return { success: false, errors: data };
     }
+  } catch (error) {
+    console.error('Google login error:', error);
+    return { success: false, errors: { general: 'Network error' } };
   }
+}
+
 
   async register(userData: any): Promise<ApiResponse<LoginResponse>> {
     try {
