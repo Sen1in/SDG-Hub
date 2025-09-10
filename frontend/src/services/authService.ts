@@ -1,5 +1,5 @@
 // frontend/src/services/authService.ts
-import { User, LoginResponse, ApiResponse } from '../types/user'; // Import from new file
+import { User, LoginResponse, ApiResponse } from '../types/user';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -56,13 +56,48 @@ class AuthService {
 
       if (response.ok) {
         this.setTokens(data.tokens.access, data.tokens.refresh);
-        this.setUser(data.user); // This now includes is_staff
+        this.setUser(data.user);
         return { success: true, data };
       } else {
         return { success: false, errors: data };
       }
     } catch (error) {
       console.error('Login error:', error);
+      return { success: false, errors: { general: 'Network error' } };
+    }
+  }
+
+  async loginWithGoogle(credential: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/google-login/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ credential }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        this.setTokens(data.tokens.access, data.tokens.refresh);
+        this.setUser(data.user);
+        
+        // Ensure isFirstLogin is included in the returned data
+        return { 
+          success: true, 
+          data: {
+            user: data.user,
+            tokens: data.tokens,
+            message: data.message,
+            isFirstLogin: data.isFirstLogin || false  
+          }
+        };
+      } else {
+        return { success: false, errors: data };
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
       return { success: false, errors: { general: 'Network error' } };
     }
   }
@@ -81,7 +116,7 @@ class AuthService {
 
       if (response.ok) {
         this.setTokens(data.tokens.access, data.tokens.refresh);
-        this.setUser(data.user); // This now includes is_staff
+        this.setUser(data.user);
         return { success: true, data };
       } else {
         return { success: false, errors: data };
@@ -151,7 +186,7 @@ class AuthService {
       
       if (response.ok) {
         const userData = await response.json();
-        this.setUser(userData); // This now includes is_staff
+        this.setUser(userData);
         return { success: true, data: userData };
       } else {
         return { success: false };
@@ -175,7 +210,7 @@ class AuthService {
       const data = await response.json();
 
       if (response.ok) {
-        this.setUser(data.user); // This now includes is_staff
+        this.setUser(data.user);
         return { success: true, data: data.user };
       } else {
         return { success: false, errors: data };

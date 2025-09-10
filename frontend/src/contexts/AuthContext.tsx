@@ -1,19 +1,19 @@
 // frontend/src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import authService from '../services/authService';
-// CORRECTED: Import types from the new central file
 import { User, ApiResponse } from '../types/user';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<ApiResponse<any>>;
+  loginWithGoogle: (credential: string) => Promise<ApiResponse<any>>;
   register: (userData: any) => Promise<ApiResponse<any>>;
   logout: () => Promise<void>;
   updateProfile: (userData: any) => Promise<ApiResponse<any>>;
   refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
-  isAdmin: boolean; // Add isAdmin for convenience
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,7 +45,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (result.success && result.data) {
           setUser(result.data);
         } else {
-          // If profile fetch fails, might be an invalid token
           await authService.logout();
         }
       }
@@ -68,6 +67,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Login error:', error);
       return { success: false, errors: { general: 'Login failed' } };
+    }
+  };
+
+  const loginWithGoogle = async (credential: string): Promise<ApiResponse<any>> => {
+    try {
+      const result = await authService.loginWithGoogle(credential);
+      if (result.success && result.data) {
+        setUser(result.data.user);
+        return result;
+      }
+      return result;
+    } catch (error) {
+      console.error('Google login error:', error);
+      return { success: false, errors: { general: 'Google login failed' } };
     }
   };
 
@@ -118,12 +131,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     loading,
     login,
+    loginWithGoogle,
     register,
     logout,
     updateProfile,
     refreshUser,
     isAuthenticated: !!user,
-    isAdmin: !!user?.is_staff, // Check if the user is staff
+    isAdmin: !!user?.is_staff,
   };
 
   return (
