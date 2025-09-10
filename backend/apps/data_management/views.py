@@ -178,50 +178,57 @@ def education_import_confirm(request):
         # Import data using raw SQL since model is not managed
         imported_count = 0
         skipped_count = 0
+        failed_count = 0
         
         with connection.cursor() as cursor:
-            for record in import_data:
-                # Check for duplicates if skip_duplicates is True
-                if skip_duplicates and record.get('title'):
-                    cursor.execute(
-                        "SELECT id FROM education_db WHERE LOWER(Title) = LOWER(%s)",
-                        [record['title']]
-                    )
-                    if cursor.fetchone():
-                        skipped_count += 1
-                        continue
-                
-                # Insert record
-                insert_sql = """
-                    INSERT INTO education_db (
-                        Title, descriptions, Aims, `Learning outcome( Expecting outcome)`, 
-                        `SDGs related`, `Type label`, Location, Organization, Year, 
-                        `Related to which discipline`, `Useful for which industries`, 
-                        Source, Link
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """
+            for i, record in enumerate(import_data):
+                try:
+                    # Check for duplicates if skip_duplicates is True
+                    if skip_duplicates and record.get('title'):
+                        cursor.execute(
+                            "SELECT id FROM education_db WHERE LOWER(Title) = LOWER(%s)",
+                            [record['title']]
+                        )
+                        if cursor.fetchone():
+                            skipped_count += 1
+                            continue
+                    
+                    # Insert record
+                    insert_sql = """
+                        INSERT INTO education_db (
+                            Title, descriptions, Aims, `Learning outcome( Expecting outcome)`, 
+                            `SDGs related`, `Type label`, Location, Organization, Year, 
+                            `Related to which discipline`, `Useful for which industries`, 
+                            Source, Link
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """
 
-                cursor.execute(insert_sql, [
-                    record.get('title', ''),
-                    record.get('descriptions', ''),
-                    record.get('aims', ''),
-                    record.get('learning_outcome_expecting_outcome_field', ''),
-                    record.get('sdgs_related', ''),
-                    record.get('type_label', ''),
-                    record.get('location', ''),
-                    record.get('organization', ''),
-                    record.get('year', ''),
-                    record.get('related_to_which_discipline', ''),
-                    record.get('useful_for_which_industries', ''),
-                    record.get('source', ''),
-                    record.get('link', ''),
-                ])
-                imported_count += 1
+                    cursor.execute(insert_sql, [
+                        record.get('title', ''),
+                        record.get('descriptions', ''),
+                        record.get('aims', ''),
+                        record.get('learning_outcome_expecting_outcome_field', ''),
+                        record.get('sdgs_related', ''),
+                        record.get('type_label', ''),
+                        record.get('location', ''),
+                        record.get('organization', ''),
+                        record.get('year', ''),
+                        record.get('related_to_which_discipline', ''),
+                        record.get('useful_for_which_industries', ''),
+                        record.get('source', ''),
+                        record.get('link', ''),
+                    ])
+                    imported_count += 1
+                    
+                except Exception as e:
+                    failed_count += 1
+                    continue
         
         return Response({
             'message': f'Import completed successfully',
             'imported_count': imported_count,
             'skipped_count': skipped_count,
+            'failed_count': failed_count,
         })
         
     except Exception as e:
@@ -389,49 +396,57 @@ def actions_import_confirm(request):
         # Import data using raw SQL since model is not managed
         imported_count = 0
         skipped_count = 0
+        failed_count = 0
         
         with connection.cursor() as cursor:
-            for record in import_data:
-                # Check for duplicates if skip_duplicates is True
-                if skip_duplicates and record.get('actions'):
-                    cursor.execute(
-                        "SELECT id FROM action_db WHERE LOWER(Actions) = LOWER(%s)",
-                        [record['actions']]
-                    )
-                    if cursor.fetchone():
-                        skipped_count += 1
-                        continue
-                
-                # Insert record
-                insert_sql = """
-                    INSERT INTO action_db (
-                        Actions, `Action detail`, ` SDGs`, Level, `Individual/Organization`,
-                        `Location (specific actions/org onlyonly)`, `Related Industry (org only)`,
-                        `Digital actions`, `Source descriptions`, Award, `Source Links`,
-                        `Additional Notes`
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """
-                
-                cursor.execute(insert_sql, [
-                    record.get('actions', ''),
-                    record.get('action_detail', ''),
-                    record.get('field_sdgs', ''),
-                    record.get('level', None),
-                    record.get('individual_organization', None),
-                    record.get('location_specific_actions_org_onlyonly_field', ''),
-                    record.get('related_industry_org_only_field', ''),
-                    record.get('digital_actions', None),
-                    record.get('source_descriptions', ''),
-                    record.get('award', None),
-                    record.get('source_links', ''),
-                    record.get('additional_notes', ''),
-                ])
-                imported_count += 1
+            for i, record in enumerate(import_data):
+                try:
+                    # Check for duplicates if skip_duplicates is True
+                    if skip_duplicates and record.get('actions'):
+                        cursor.execute(
+                            "SELECT id FROM action_db WHERE LOWER(Actions) = LOWER(%s)",
+                            [record['actions']]
+                        )
+                        if cursor.fetchone():
+                            skipped_count += 1
+                            continue
+                    
+                    # Insert record
+                    insert_sql = """
+                        INSERT INTO action_db (
+                            Actions, `Action detail`, ` SDGs`, Level, `Individual/Organization`,
+                            `Location (specific actions/org onlyonly)`, `Related Industry (org only)`,
+                            `Digital actions`, `Source descriptions`, `Award descriptions`, Award,
+                            `Source Links`, `Additional Notes`
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """
+                    
+                    cursor.execute(insert_sql, [
+                        record.get('actions', ''),
+                        record.get('action_detail', ''),
+                        record.get('field_sdgs', ''),
+                        record.get('level', None),
+                        record.get('individual_organization', None),
+                        record.get('location_specific_actions_org_onlyonly_field', ''),
+                        record.get('related_industry_org_only_field', ''),
+                        record.get('digital_actions', None),
+                        record.get('source_descriptions', ''),
+                        record.get('award_descriptions', ''),
+                        record.get('award', None),
+                        record.get('source_links', ''),
+                        record.get('additional_notes', ''),
+                    ])
+                    imported_count += 1
+                    
+                except Exception as e:
+                    failed_count += 1
+                    continue
         
         return Response({
             'message': f'Import completed successfully',
             'imported_count': imported_count,
             'skipped_count': skipped_count,
+            'failed_count': failed_count,
         })
         
     except Exception as e:
