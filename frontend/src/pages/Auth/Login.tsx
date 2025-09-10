@@ -8,7 +8,9 @@ import { ErrorMessage } from './components/shared/ErrorMessage';
 import { SubmitButton } from './components/shared/SubmitButton';
 import { RegisterPrompt } from './components/login/RegisterPrompt';
 import { AuthFooter } from './components/shared/AuthFooter';
+import { GoogleLoginButton } from './components/login/GoogleLoginButton';
 import { useLoginForm } from './hooks/useLoginForm';
+import { useGoogleLogin } from './hooks/useGoogleLogin';
 
 const Login: React.FC = () => {
   const {
@@ -20,6 +22,11 @@ const Login: React.FC = () => {
     handleChange,
     handleSubmit
   } = useLoginForm();
+
+  const {
+    googleLoading,
+    handleGoogleLogin
+  } = useGoogleLogin();
 
   const handleForgotPassword = () => {
     console.log('Forgot password clicked');
@@ -64,9 +71,31 @@ const Login: React.FC = () => {
               text="Login"
             />
 
-            <RegisterPrompt />
-
           </form>
+
+          {/* 分割线 */}
+          <div className="mt-6 mb-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">or</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Google登录按钮 */}
+          <GoogleLoginButton 
+            onGoogleLogin={handleGoogleLogin}
+            loading={googleLoading}
+          />
+
+          {/* 注册提示 */}
+          <div className="mt-6">
+            <RegisterPrompt />
+          </div>
+
         </div>
 
         <AuthFooter />
