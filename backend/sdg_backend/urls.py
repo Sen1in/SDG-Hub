@@ -11,9 +11,8 @@ from api.views import home
 
 urlpatterns = [
     path('', home, name='home'),
-    path('admin/', admin.site.urls),  # Enable admin site
+    path('admin/', admin.site.urls),
 
-    # Your existing API routes (keep unchanged)
     path('api/auth/', include('apps.authentication.urls')),
     path('api/education/', include('apps.education.urls')),
     path('api/track/', include('apps.analytics.urls')),
@@ -21,9 +20,10 @@ urlpatterns = [
     path('api/actions/', include('apps.actions.urls')),
     path('api/keywords/', include('apps.keywords.urls')),
     path('api/team/', include('apps.team.urls')),
-    path('api/', include('apps.form.urls')), # Fixed spelling error here
+    path('api/', include('apps.form.urls')),
     path('api/search/', include('apps.search.urls')), 
     path('api/notifications/', include('apps.notifications.urls')),
+    path('api/data-management/', include('apps.data_management.urls')),
 ]
 
 

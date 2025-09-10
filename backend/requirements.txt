@@ -39,3 +39,6 @@ weasyprint
 markdown
 psycopg2-binary
 python-pptx
+openpyxl
+xlrd
+pandas

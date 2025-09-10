@@ -28,6 +28,7 @@ import AnalyzePage from './pages/Analyze/AnalyzePage'; // Import AnalyzePage
 import CollaborativeForm from './pages/Form/components/CollaborativeForm';
 import ForceLoginRoute from './components/Navigation/ForceLoginRoute';
 import AboutUs from './pages/AboutUs/AboutUs';
+import DataManagement from './pages/DataManagement/DataManagement';
 
 
 function App() {
@@ -75,6 +76,7 @@ function App() {
             <Route path="/team/:teamId/forms/:formId" element={<CollaborativeForm />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/liked" element={<LikedPage />} />
+            <Route path="/data-management" element={<DataManagement />} />
             
             <Route path="/search" element={<Layout><SearchResultPage /></Layout>} />
             

@@ -44,6 +44,7 @@ LOCAL_APPS = [
     'apps.search.apps.SearchConfig',
     'apps.form.apps.FormConfig',
     'apps.notifications.apps.NotificationsConfig',
+    'apps.data_management.apps.DataManagementConfig',
     'api',
 ]
 
