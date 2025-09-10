@@ -25,6 +25,9 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const [popularEdu, setPopularEdu] = useState<PopularItem[]>([]);
   const [popularAct, setPopularAct] = useState<PopularItem[]>([]);
+  const [educationCount, setEducationCount] = useState<number>(3100);
+  const [actionsCount, setActionsCount] = useState<number>(2200);
+  const [keywordsCount, setKeywordsCount] = useState<number>(169);
 
   // Fetch popular search terms
   useEffect(() => {
@@ -83,6 +86,57 @@ const Home: React.FC = () => {
     fetchPopular();
   }, []);
 
+  // Fetch education count
+  useEffect(() => {
+    const fetchEducationCount = async () => {
+      try {
+        const response = await fetch('/api/education/stats/');
+        if (response.ok) {
+          const data = await response.json();
+          setEducationCount(data.total_resources);
+        }
+      } catch (error) {
+        console.error('Error fetching education count:', error);
+      }
+    };
+
+    fetchEducationCount();
+  }, []);
+
+    // Fetch actions count
+    useEffect(() => {
+      const fetchActionsCount = async () => {
+        try {
+          const response = await fetch('/api/actions/stats/');
+          if (response.ok) {
+            const data = await response.json();
+            setActionsCount(data.total_resources);
+          }
+        } catch (error) {
+          console.error('Error fetching actions count:', error);
+        }
+      };
+  
+      fetchActionsCount();
+    }, []);
+
+     // Fetch keywords count
+  useEffect(() => {
+    const fetchKeywordsCount = async () => {
+      try {
+        const response = await fetch('/api/keywords/stats/');
+        if (response.ok) {
+          const data = await response.json();
+          setKeywordsCount(data.unique_keywords);
+        }
+      } catch (error) {
+        console.error('Error fetching keywords count:', error);
+      }
+    };
+
+    fetchKeywordsCount();
+  }, []);
+
   // Handle clicking on a popular search term
   const handlePopularTermClick = (term: string) => {
     setSearchQuery(term);
@@ -112,29 +166,33 @@ const Home: React.FC = () => {
       title: 'SDG Education Database',
       description: 'Over 3,100 entries offering in-depth insights into SDG-related education.',
       icon: '📖',
-      count: '3,100+',
-      color: 'from-blue-500 to-blue-600'
+      count: `${educationCount.toLocaleString()}`,
+      color: 'from-blue-500 to-blue-600',
+      link: '/education'
     },
     {
       title: 'SDG Action Database',
       description: '2,200 curated items highlighting actionable SDG plans and real-world examples.',
       icon: '🎯',
-      count: '2,200+',
-      color: 'from-green-500 to-green-600'
+      count: `${actionsCount.toLocaleString()}`,
+      color: 'from-green-500 to-green-600',
+      link: '/actions'
     },
     {
       title: 'SDG Keyword Search',
       description: 'Search specific words or phrases to determine their relevance to the 17 SDGs.',
       icon: '🔍',
-      count: '169',
-      color: 'from-purple-500 to-purple-600'
+      count: `${keywordsCount.toLocaleString()}`,
+      color: 'from-purple-500 to-purple-600',
+      link: '/keywords'
     },
     {
       title: 'SDG Expert Chatbot',
       description: 'AI-powered assistant to help you find relevant SDG information quickly.',
       icon: '🤖',
       count: 'AI',
-      color: 'from-orange-500 to-orange-600'
+      color: 'from-orange-500 to-orange-600',
+      link: '/chatbot'
     }
   ];
 
@@ -439,9 +497,11 @@ const Home: React.FC = () => {
                 className="card-hover p-6 text-center group cursor-pointer"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${feature.color} flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                  <span className="text-2xl">{feature.icon}</span>
-                </div>
+                <Link to={feature.link} className="block" onClick={() => window.scrollTo(0, 0)}>
+                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${feature.color} flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                    <span className="text-2xl">{feature.icon}</span>
+                  </div>
+                </Link>
                 <div className={`text-3xl font-bold bg-gradient-to-r ${feature.color} bg-clip-text text-transparent mb-2`}>
                   {feature.count}
                 </div>
