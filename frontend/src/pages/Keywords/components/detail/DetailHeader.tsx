@@ -13,8 +13,13 @@ export const DetailHeader: React.FC<DetailHeaderProps> = ({ keyword, totalTarget
   const handleBack = () => {
     if (onBack) {
       onBack();
+      return;
+    }
+
+    if (window.history.length <= 1) {
+      window.close();
     } else {
-      navigate(-1); 
+      navigate(-1);
     }
   };
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { ActionsResource } from '../../types';
 import { SDGBadge } from '../shared/SDGBadge';
 import LikeButton from '../../../../components/LikeButton/LikeButton';
@@ -10,8 +11,11 @@ interface ResourceCardProps {
 
 export const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onClick }) => {
   return (
-    <div 
-      className="grid grid-cols-12 gap-4 p-4 border-b hover:bg-gray-50 cursor-pointer transition-colors"
+    <Link
+      to={`/actions/${resource.id}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="grid grid-cols-12 gap-4 p-4 border-b hover:bg-gray-50 transition-colors block"
       onClick={() => onClick(resource.id)}
     >
       {/* Action Title + ❤️ */}
@@ -58,6 +62,6 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onClick })
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 };

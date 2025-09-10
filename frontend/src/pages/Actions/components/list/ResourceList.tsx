@@ -21,7 +21,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({
         <div className="col-span-4">TITLE</div>
         <div className="col-span-3">RELATED SDGS</div>
         <div className="col-span-3">ORGANIZATION</div>
-        <div className="col-span-2">YEAR</div>
+        <div className="col-span-2">AWARD</div>
       </div>
 
       {/* Data row */}

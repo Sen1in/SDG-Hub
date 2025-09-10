@@ -83,6 +83,7 @@ const LikeButton: React.FC<LikeButtonProps> = ({
     <button
       onClick={(e) => {
         e.stopPropagation();
+        e.preventDefault();
         onClick?.(e);
         handleToggle();
       }}

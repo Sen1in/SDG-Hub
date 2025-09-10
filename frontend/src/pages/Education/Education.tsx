@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ListHeader } from './components/list/ListHeader';
 import { FilterPanel } from './components/filters/FilterPanel';
 import { ResourceList } from './components/list/ResourceList';
@@ -15,7 +14,6 @@ import { trackSearch } from '../../services/tracker';
 import { trackClick } from '../../services/tracker';
 
 const Education: React.FC = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { filters, updateFilter, toggleSDG, clearFilters } = useEducationFilters();
   const { currentPage, goToPage, resetPage } = usePagination();
@@ -34,14 +32,12 @@ const Education: React.FC = () => {
     if (user?.id) {
       trackClick('education', resourceId);
     }
-    navigate(`/education/${resourceId}`);
   };
 
 
   const handleClearFilters = () => {
     clearFilters();
     resetPage();
-    // setTimeout(triggerSearch, 50);
   };
 
   const handlePageChange = (page: number) => {

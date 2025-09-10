@@ -17,8 +17,13 @@ export const DetailHeader: React.FC<DetailHeaderProps> = ({ resource, liked, onT
   const handleBack = () => {
     if (onBack) {
       onBack();
+      return;
+    }
+
+    if (window.history.length <= 1) {
+      window.close();
     } else {
-      navigate(-1); 
+      navigate(-1);
     }
   };
 
