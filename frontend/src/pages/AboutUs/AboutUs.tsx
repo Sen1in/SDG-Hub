@@ -82,7 +82,7 @@ const AboutUs: React.FC = () => {
               The Digital Sustainability Knowledge Hub engages in multi-disciplinary research, education, and engagement with the aim of advancing UN Sustainable Development Goals (UN SDGs).
             </p>
 
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">Contact Us</h2>
+            <h2 id="contact" className="scroll-mt-24 text-3xl font-bold text-gray-900 mb-6">Contact Us</h2>
             
             <div className="bg-gray-50 rounded-lg p-6">
               <p className="text-lg text-gray-700">
