@@ -16,11 +16,11 @@ interface PopularItem {
   count: number;
 }
 
-
 const Home: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [popularTerms, setPopularTerms] = useState<PopularSearchTerm[]>([]);
   const [loadingTerms, setLoadingTerms] = useState(false);
+  const [hoveredGoal, setHoveredGoal] = useState<number | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
   const [popularEdu, setPopularEdu] = useState<PopularItem[]>([]);
@@ -50,7 +50,6 @@ const Home: React.FC = () => {
 
     fetchPopularTerms();
   }, []);
-
 
   useEffect(() => {
     const fetchPopular = async () => {
@@ -103,24 +102,24 @@ const Home: React.FC = () => {
     fetchEducationCount();
   }, []);
 
-    // Fetch actions count
-    useEffect(() => {
-      const fetchActionsCount = async () => {
-        try {
-          const response = await fetch('/api/actions/stats/');
-          if (response.ok) {
-            const data = await response.json();
-            setActionsCount(data.total_resources);
-          }
-        } catch (error) {
-          console.error('Error fetching actions count:', error);
+  // Fetch actions count
+  useEffect(() => {
+    const fetchActionsCount = async () => {
+      try {
+        const response = await fetch('/api/actions/stats/');
+        if (response.ok) {
+          const data = await response.json();
+          setActionsCount(data.total_resources);
         }
-      };
-  
-      fetchActionsCount();
-    }, []);
+      } catch (error) {
+        console.error('Error fetching actions count:', error);
+      }
+    };
 
-     // Fetch keywords count
+    fetchActionsCount();
+  }, []);
+
+  // Fetch keywords count
   useEffect(() => {
     const fetchKeywordsCount = async () => {
       try {
@@ -150,24 +149,25 @@ const Home: React.FC = () => {
     navigate(`/search?q=${encodeURIComponent(term)}`);
   };
 
+  // SDG Goals data with static and animated images
   const sdgGoals = [
-    { id: 1, image: '/17-SDG-logos/E_PRINT_01.jpg' },
-    { id: 2, image: '/17-SDG-logos/E_PRINT_02.jpg' },
-    { id: 3, image: '/17-SDG-logos/E_PRINT_03.jpg' },
-    { id: 4, image: '/17-SDG-logos/E_PRINT_04.jpg' },
-    { id: 5, image: '/17-SDG-logos/E_PRINT_05.jpg' },
-    { id: 6, image: '/17-SDG-logos/E_PRINT_06.jpg' },
-    { id: 7, image: '/17-SDG-logos/E_PRINT_07.jpg' },
-    { id: 8, image: '/17-SDG-logos/E_PRINT_08.jpg' },
-    { id: 9, image: '/17-SDG-logos/E_PRINT_09.jpg' },
-    { id: 10, image: '/17-SDG-logos/E_PRINT_10.jpg' },
-    { id: 11, image: '/17-SDG-logos/E_PRINT_11.jpg' },
-    { id: 12, image: '/17-SDG-logos/E_PRINT_12.jpg' },
-    { id: 13, image: '/17-SDG-logos/E_PRINT_13.jpg' },
-    { id: 14, image: '/17-SDG-logos/E_PRINT_14.jpg' },
-    { id: 15, image: '/17-SDG-logos/E_PRINT_15.jpg' },
-    { id: 16, image: '/17-SDG-logos/E_PRINT_16.jpg' },
-    { id: 17, image: '/17-SDG-logos/E_PRINT_17.jpg' },
+    { id: 1, staticImage: '/17-SDG-logos/E_WEB_01.png', animatedImage: '/17-SDG-logos/E_GIF_01.gif' },
+    { id: 2, staticImage: '/17-SDG-logos/E_WEB_02.png', animatedImage: '/17-SDG-logos/E_GIF_02.gif' },
+    { id: 3, staticImage: '/17-SDG-logos/E_WEB_03.png', animatedImage: '/17-SDG-logos/E_GIF_03.gif' },
+    { id: 4, staticImage: '/17-SDG-logos/E_WEB_04.png', animatedImage: '/17-SDG-logos/E_GIF_04.gif' },
+    { id: 5, staticImage: '/17-SDG-logos/E_WEB_05.png', animatedImage: '/17-SDG-logos/E_GIF_05.gif' },
+    { id: 6, staticImage: '/17-SDG-logos/E_WEB_06.png', animatedImage: '/17-SDG-logos/E_GIF_06.gif' },
+    { id: 7, staticImage: '/17-SDG-logos/E_WEB_07.png', animatedImage: '/17-SDG-logos/E_GIF_07.gif' },
+    { id: 8, staticImage: '/17-SDG-logos/E_WEB_08.png', animatedImage: '/17-SDG-logos/E_GIF_08.gif' },
+    { id: 9, staticImage: '/17-SDG-logos/E_WEB_09.png', animatedImage: '/17-SDG-logos/E_GIF_09.gif' },
+    { id: 10, staticImage: '/17-SDG-logos/E_WEB_10.png', animatedImage: '/17-SDG-logos/E_GIF_10.gif' },
+    { id: 11, staticImage: '/17-SDG-logos/E_WEB_11.png', animatedImage: '/17-SDG-logos/E_GIF_11.gif' },
+    { id: 12, staticImage: '/17-SDG-logos/E_WEB_12.png', animatedImage: '/17-SDG-logos/E_GIF_12.gif' },
+    { id: 13, staticImage: '/17-SDG-logos/E_WEB_13.png', animatedImage: '/17-SDG-logos/E_GIF_13.gif' },
+    { id: 14, staticImage: '/17-SDG-logos/E_WEB_14.png', animatedImage: '/17-SDG-logos/E_GIF_14.gif' },
+    { id: 15, staticImage: '/17-SDG-logos/E_WEB_15.png', animatedImage: '/17-SDG-logos/E_GIF_15.gif' },
+    { id: 16, staticImage: '/17-SDG-logos/E_WEB_16.png', animatedImage: '/17-SDG-logos/E_GIF_16.gif' },
+    { id: 17, staticImage: '/17-SDG-logos/E_WEB_17.png', animatedImage: '/17-SDG-logos/E_GIF_17.gif' },
   ];
 
   const features = [
@@ -215,17 +215,12 @@ const Home: React.FC = () => {
     navigate(`/search?q=${encodeURIComponent(trimmedQuery)}`);
   };
 
-  /**
-   * Handles when user clicks on a suggestion from the autocomplete dropdown
-   */
   const handleSuggestionClick = (suggestion: SearchSuggestion) => {
-    // Track the suggestion click separately if needed
     if (user?.id) {
       trackSearch(user.id.toString(), suggestion.term);
     }
     navigate(`/search?q=${encodeURIComponent(suggestion.term)}`);
   };
-
 
   return (
     <div className="min-h-screen">
@@ -247,200 +242,56 @@ const Home: React.FC = () => {
               Comprehensive information on the United Nations' 17 Sustainable Development Goals
             </p>
             
-            {/* Search Bar with Autocomplete */}
-            <div className="max-w-2xl mx-auto mb-12 animate-slide-up">
-              <div className="home-search-bar">
-                <AutocompleteSearchBar
-                  value={searchQuery}
-                  onChange={setSearchQuery}
-                  onSearch={handleSearch}
-                  onSuggestionClick={handleSuggestionClick}
-                  config={{
-                    placeholder: "Search SDG actions, education, keywords...",
-                    minInputLength: 2,
-                    maxSuggestions: 6,
-                    debounceMs: 250,
-                    showCount: true
-                  }}
-                />
+            {/* Search Bar */}
+            <div className="mb-12 animate-slide-up">
+              <AutocompleteSearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                onSearch={handleSearch}
+                onSuggestionClick={handleSuggestionClick}
+              />
+            </div>
+              
+            {/* Popular Search Terms */}
+            <div className="mt-6">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-semibold text-white/90 mb-2">Popular Search Terms</h3>
               </div>
               
-              {/* Custom CSS for Home page search bar styling */}
-              <style dangerouslySetInnerHTML={{
-                __html: `
-                  .home-search-bar input {
-                    padding: 1rem 4rem 1rem 1.5rem !important;
-                    font-size: 1.125rem !important;
-                    border-radius: 1rem !important;
-                    background-color: rgba(255, 255, 255, 0.95) !important;
-                    backdrop-filter: blur(4px) !important;
-                    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-                    transition: all 0.3s ease !important;
-                  }
-                  
-                  .home-search-bar input:focus {
-                    outline: none !important;
-                    ring: 4px rgba(255, 255, 255, 0.3) !important;
-                    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3) !important;
-                  }
-                  
-                  .home-search-bar button[type="submit"] {
-                    position: absolute !important;
-                    right: 0.5rem !important;
-                    top: 50% !important;
-                    transform: translateY(-50%) !important;
-                    padding: 0.75rem 1.5rem !important;
-                    background-color: #16a34a !important;
-                    color: white !important;
-                    border-radius: 0.75rem !important;
-                    transition: background-color 0.2s ease !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                  }
-                  
-                  .home-search-bar button[type="submit"]:hover {
-                    background-color: #15803d !important;
-                  }
-                  
-                  .home-search-bar button[type="submit"] svg {
-                    width: 1.5rem !important;
-                    height: 1.5rem !important;
-                  }
-
-                  /* Google-style dropdown styling for home page */
-                  .home-search-bar div[role="listbox"] {
-                    margin-top: 0.5rem !important;
-                    background-color: rgba(255, 255, 255, 0.98) !important;
-                    backdrop-filter: blur(8px) !important;
-                    border-radius: 0.75rem !important;
-                    border: 1px solid rgba(255, 255, 255, 0.3) !important;
-                    box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-                    animation: fadeIn 0.2s ease-out !important;
-                  }
-
-                  @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(-10px); }
-                    to { opacity: 1; transform: translateY(0); }
-                  }
-
-                  /* Suggestion items styling */
-                  .home-search-bar div[role="listbox"] button {
-                    height: 40px !important;
-                    width: 100% !important;
-                    padding: 0 1rem !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    gap: 0.75rem !important;
-                    text-align: left !important;
-                    background-color: transparent !important;
-                    border: none !important;
-                    border-radius: 0 !important;
-                    transition: background-color 0.15s ease-in-out !important;
-                    position: relative !important;
-                    right: auto !important;
-                    top: auto !important;
-                    transform: none !important;
-                    color: #374151 !important;
-                  }
-
-                  .home-search-bar div[role="listbox"] button:hover {
-                    background-color: #f2f2f2 !important;
-                  }
-
-                  .home-search-bar div[role="listbox"] button[aria-selected="true"] {
-                    background-color: #f3f4f6 !important;
-                  }
-
-                  /* Add search icon before suggestion text */
-                  .home-search-bar div[role="listbox"] button:before {
-                    content: '';
-                    display: inline-block;
-                    width: 16px;
-                    height: 16px;
-                    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M21 21l-4.35-4.35M16.5 10.5a6 6 0 11-12 0 6 6 0 0112 0z'/%3E%3C/svg%3E");
-                    background-size: contain;
-                    background-repeat: no-repeat;
-                    flex-shrink: 0;
-                  }
-
-                  /* Suggestion text styling */
-                  .home-search-bar div[role="listbox"] button span:first-of-type {
-                    flex: 1 !important;
-                    font-size: 0.875rem !important;
-                    font-weight: 400 !important;
-                    color: #374151 !important;
-                    white-space: nowrap !important;
-                    overflow: hidden !important;
-                    text-overflow: ellipsis !important;
-                  }
-
-                  /* Count badge styling */
-                  .home-search-bar div[role="listbox"] button span:last-of-type {
-                    flex-shrink: 0 !important;
-                    font-size: 0.75rem !important;
-                    font-weight: 400 !important;
-                    color: #6B7280 !important;
-                    margin-left: 0.5rem !important;
-                  }
-
-                  /* Remove existing button styling from suggestions */
-                  .home-search-bar div[role="listbox"] button:not([type="submit"]) {
-                    padding: 0 1rem !important;
-                    background-color: transparent !important;
-                    border-radius: 0 !important;
-                    color: #374151 !important;
-                  }
-
-                  /* Ensure submit button keeps its style */
-                  .home-search-bar button[type="submit"] {
-                    z-index: 10 !important;
-                  }
-                `
-              }} />
-              
-              {/* Popular Search Terms */}
-              <div className="mt-6">
-                <div className="text-center mb-4">
-                  <h3 className="text-lg font-semibold text-white/90 mb-2">Popular Search Terms</h3>
+              {loadingTerms ? (
+                <div className="flex justify-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white/60"></div>
                 </div>
-                
-                {loadingTerms ? (
-                  <div className="flex justify-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white/60"></div>
-                  </div>
-                ) : popularTerms.length > 0 ? (
-                  <div className="flex flex-wrap justify-center gap-2">
-                    {popularTerms.map((term, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handlePopularTermClick(term.term)}
-                        className="relative group px-4 py-2 bg-white/10 backdrop-blur-sm text-white rounded-full border border-white/20 hover:bg-white/20 hover:border-white/40 transition-all duration-200 transform hover:scale-105 active:scale-95"
-                      >
-                        <span className="text-sm font-medium">{term.term}</span>
-                        <span className="ml-2 text-xs bg-white/20 text-white/80 rounded-full px-2 py-0.5">
-                          {term.count}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <p className="text-white/60 text-sm">No popular search terms yet</p>
-                  </div>
-                )}
-              </div>
+              ) : popularTerms.length > 0 ? (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {popularTerms.map((term, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handlePopularTermClick(term.term)}
+                      className="relative group px-4 py-2 bg-white/10 backdrop-blur-sm text-white rounded-full border border-white/20 hover:bg-white/20 hover:border-white/40 transition-all duration-200 transform hover:scale-105 active:scale-95"
+                    >
+                      <span className="text-sm font-medium">{term.term}</span>
+                      <span className="ml-2 text-xs bg-white/20 text-white/80 rounded-full px-2 py-0.5">
+                        {term.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-white/60 text-sm">No popular search terms yet</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </section>
 
-
       <section className="py-12 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">🔥 Popular Content</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* 教育热门 */}
+            {/* Education Popular Content */}
             <div className="p-6 bg-white rounded-xl shadow">
               <h3 className="text-xl font-semibold mb-4">📚 Popular Education</h3>
               {popularEdu.length === 0 ? (
@@ -462,7 +313,7 @@ const Home: React.FC = () => {
               )}
             </div>
 
-            {/* 动作热门 */}
+            {/* Action Popular Content */}
             <div className="p-6 bg-white rounded-xl shadow">
               <h3 className="text-xl font-semibold mb-4">🎯 Popular Actions</h3>
               {popularAct.length === 0 ? (
@@ -545,19 +396,19 @@ const Home: React.FC = () => {
                 to={`/sdg-targets/goal-${goal.id}`}
                 className="block rounded-xl overflow-hidden hover:scale-105 transition-transform duration-200 cursor-pointer group shadow-lg hover:shadow-xl"
                 style={{ animationDelay: `${index * 0.05}s` }}
+                onMouseEnter={() => setHoveredGoal(goal.id)}
+                onMouseLeave={() => setHoveredGoal(null)}
               >
                 <img
-                  src={goal.image}
+                  src={hoveredGoal === goal.id ? goal.animatedImage : goal.staticImage}
                   alt={`SDG Goal ${goal.id}`}
-                  className="w-full h-auto"
+                  className="w-full h-auto transition-all duration-300"
                 />
               </Link>
             ))}
           </div>
-
         </div>
       </section>
-
     </div>
   );
 };
