@@ -11,7 +11,7 @@ const Footer: React.FC = () => {
     ],
     'About': [
       { name: 'About Us', path: '/about-us' },
-      { name: 'Contact', path: '/contact' },
+      { name: 'Contact', path: '/about-us#contact' },
     ],
     'Legal': [
       { name: 'Terms of Service', path: '/terms' },
@@ -22,7 +22,7 @@ const Footer: React.FC = () => {
     <footer className="bg-gray-900 text-gray-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Main Footer Content */}
-        <div className="flex flex-col lg:flex-row gap-14 mb-8">
+        <div className="flex flex-col lg:flex-row gap-12 mb-8">
           {/* Brand Section */}
           <div className="lg:flex-1 lg:max-w-md">
             <div className="flex items-center space-x-3 mb-4">
@@ -45,7 +45,7 @@ const Footer: React.FC = () => {
           </div>
 
           {/* Links Sections */}
-          <div className="flex flex-col md:flex-row lg:flex-row gap-6 lg:gap-4">
+          <div className="flex flex-col md:flex-row lg:flex-row gap-6 lg:gap-12">
             {Object.entries(footerLinks).map(([category, links]) => (
               <div key={category} className="min-w-0">
                 <h4 className="text-white font-semibold mb-4 text-base">{category}</h4>
@@ -73,7 +73,14 @@ const Footer: React.FC = () => {
               © 2025 SDG Knowledge System. All rights reserved.
             </div>
             <div className="text-xs text-gray-400">
-              Sponsored by UNSW Business School SDG Committee
+              <a
+                href="https://www.unsw.edu.au/business/about-us/bus-sdg"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-white"
+              >
+                Sponsored by UNSW Business School SDG Committee
+              </a>
             </div>
           </div>
         </div>
