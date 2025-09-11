@@ -59,3 +59,60 @@ class EmailVerificationCode(models.Model):
             
         except cls.DoesNotExist:
             return False, "Invalid verification code"
+
+class PasswordResetToken(models.Model):
+    """Password reset token model"""
+    email = models.EmailField()
+    token = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+    
+    class Meta:
+        db_table = 'password_reset_tokens'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.email} - {self.token[:20]}..."
+    
+    @classmethod
+    def generate_token(cls):
+        """Generate secure random token"""
+        import secrets
+        return secrets.token_urlsafe(32)
+    
+    @classmethod
+    def create_token(cls, email):
+        """Create password reset token for specified email"""
+        # Delete previous unused tokens for this email
+        cls.objects.filter(email=email, is_used=False).delete()
+        
+        # Create new reset token
+        token = cls.generate_token()
+        return cls.objects.create(email=email, token=token)
+    
+    def is_expired(self):
+        """Check if reset token has expired (30 minute validity)"""
+        expiry_time = self.created_at + timedelta(minutes=30)
+        return timezone.now() > expiry_time
+    
+    @classmethod
+    def verify_and_use_token(cls, email, token):
+        """Verify and mark password reset token as used"""
+        try:
+            reset_token = cls.objects.get(
+                email=email, 
+                token=token, 
+                is_used=False
+            )
+            
+            if reset_token.is_expired():
+                return False, "Reset token has expired"
+            
+            # Mark as used
+            reset_token.is_used = True
+            reset_token.save()
+            
+            return True, "Token verified successfully"
+            
+        except cls.DoesNotExist:
+            return False, "Invalid reset token"

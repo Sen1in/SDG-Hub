@@ -67,6 +67,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
     }
   };
 
+
   // Confirm custom input (Enter key or blur)
   const confirmCustomInput = (fieldName: string) => {
     if (fieldName === 'gender' && genderCustomValue.trim()) {
@@ -115,17 +116,18 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
   const getGenderOptions = () => {
     const baseOptions = [
       { value: '', label: 'Please select' },
-      { value: 'Female', label: 'Female' },
       { value: 'Male', label: 'Male' },
+      { value: 'Female', label: 'Female' },
+      { value: 'Other', label: 'Other (please specify)' },
+      { value: 'Prefer not to say', label: 'Prefer not to say' },
     ];
 
     // If current value is not in predefined options, add it as an option
-    const predefinedValues = ['', 'Female', 'Male'];
+    const predefinedValues = ['', 'Male', 'Female', 'Other', 'Prefer not to say'];
     if (profileData.gender && !predefinedValues.includes(profileData.gender)) {
       baseOptions.push({ value: profileData.gender, label: profileData.gender });
     }
     
-    baseOptions.push({ value: 'Other', label: 'Other (please specify)' });
     return baseOptions;
   };
 
@@ -134,16 +136,68 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
     const baseOptions = [
       { value: '', label: 'Please select' },
       { value: 'English', label: 'English' },
-      { value: 'Mandarin', label: 'Mandarin' },
-      { value: 'Arabic', label: 'Arabic' },
-      { value: 'Cantonese', label: 'Cantonese' },
-      { value: 'Vietnamese', label: 'Vietnamese' },
-      { value: 'Hindu', label: 'Hindu' },
-      { value: 'Italian', label: 'Italian' },
+      { value: 'Mandarin Chinese', label: 'Mandarin Chinese (中文)' },
+      { value: 'Spanish', label: 'Spanish (Español)' },
+      { value: 'Hindi', label: 'Hindi (हिन्दी)' },
+      { value: 'Arabic', label: 'Arabic (العربية)' },
+      { value: 'Portuguese', label: 'Portuguese (Português)' },
+      { value: 'Bengali', label: 'Bengali (বাংলা)' },
+      { value: 'Russian', label: 'Russian (Русский)' },
+      { value: 'Japanese', label: 'Japanese (日本語)' },
+      { value: 'Punjabi', label: 'Punjabi (ਪੰਜਾਬੀ)' },
+      { value: 'German', label: 'German (Deutsch)' },
+      { value: 'Korean', label: 'Korean (한국어)' },
+      { value: 'French', label: 'French (Français)' },
+      { value: 'Telugu', label: 'Telugu (తెలుగు)' },
+      { value: 'Marathi', label: 'Marathi (मराठी)' },
+      { value: 'Turkish', label: 'Turkish (Türkçe)' },
+      { value: 'Tamil', label: 'Tamil (தமிழ்)' },
+      { value: 'Vietnamese', label: 'Vietnamese (Tiếng Việt)' },
+      { value: 'Italian', label: 'Italian (Italiano)' },
+      { value: 'Urdu', label: 'Urdu (اردو)' },
+      { value: 'Indonesian', label: 'Indonesian (Bahasa Indonesia)' },
+      { value: 'Polish', label: 'Polish (Polski)' },
+      { value: 'Dutch', label: 'Dutch (Nederlands)' },
+      { value: 'Thai', label: 'Thai (ไทย)' },
+      { value: 'Malayalam', label: 'Malayalam (മലയാളം)' },
+      { value: 'Kannada', label: 'Kannada (ಕನ್ನಡ)' },
+      { value: 'Gujarati', label: 'Gujarati (ગુજરાતી)' },
+      { value: 'Ukrainian', label: 'Ukrainian (Українська)' },
+      { value: 'Persian', label: 'Persian (فارسی)' },
+      { value: 'Romanian', label: 'Romanian (Română)' },
+      { value: 'Hebrew', label: 'Hebrew (עברית)' },
+      { value: 'Swedish', label: 'Swedish (Svenska)' },
+      { value: 'Norwegian', label: 'Norwegian (Norsk)' },
+      { value: 'Danish', label: 'Danish (Dansk)' },
+      { value: 'Finnish', label: 'Finnish (Suomi)' },
+      { value: 'Greek', label: 'Greek (Ελληνικά)' },
+      { value: 'Czech', label: 'Czech (Čeština)' },
+      { value: 'Hungarian', label: 'Hungarian (Magyar)' },
+      { value: 'Bulgarian', label: 'Bulgarian (Български)' },
+      { value: 'Croatian', label: 'Croatian (Hrvatski)' },
+      { value: 'Serbian', label: 'Serbian (Српски)' },
+      { value: 'Slovak', label: 'Slovak (Slovenčina)' },
+      { value: 'Slovenian', label: 'Slovenian (Slovenščina)' },
+      { value: 'Lithuanian', label: 'Lithuanian (Lietuvių)' },
+      { value: 'Latvian', label: 'Latvian (Latviešu)' },
+      { value: 'Estonian', label: 'Estonian (Eesti)' },
+      { value: 'Cantonese', label: 'Cantonese (粵語)' },
+      { value: 'Hakka', label: 'Hakka (客家話)' },
+      { value: 'Hokkien', label: 'Hokkien (閩南語)' },
+      { value: 'Tagalog', label: 'Tagalog' },
+      { value: 'Malay', label: 'Malay (Bahasa Melayu)' },
+      { value: 'Swahili', label: 'Swahili (Kiswahili)' },
+      { value: 'Amharic', label: 'Amharic (አማርኛ)' },
+      { value: 'Yoruba', label: 'Yoruba (Yorùbá)' },
+      { value: 'Igbo', label: 'Igbo (Asụsụ Igbo)' },
+      { value: 'Hausa', label: 'Hausa (Harshen Hausa)' },
+      { value: 'Zulu', label: 'Zulu (IsiZulu)' },
+      { value: 'Xhosa', label: 'Xhosa (IsiXhosa)' },
+      { value: 'Afrikaans', label: 'Afrikaans' },
     ];
 
     // If current value is not in predefined options, add it as an option
-    const predefinedValues = ['', 'English', 'Mandarin', 'Arabic', 'Cantonese', 'Vietnamese', 'Hindu', 'Italian'];
+    const predefinedValues = baseOptions.map(option => option.value);
     if (profileData.language && !predefinedValues.includes(profileData.language)) {
       baseOptions.push({ value: profileData.language, label: profileData.language });
     }

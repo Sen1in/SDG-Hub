@@ -77,8 +77,8 @@ const Navigation: React.FC = () => {
             {/* Logo and Brand */}
             <div className="flex items-center space-x-4">
               <Link to="/" className="flex items-center space-x-3 group">
-                <div className="w-10 h-10 bg-sdg-gradient rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-                  <span className="text-white font-bold text-lg">SDG</span>
+                <div className="w-10 h-10 bg-sdg-gradient rounded-lg flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform duration-200">
+                  <img src="/SDG_logo.png" alt="SDG Logo" className="w-8 h-8 object-contain" />
                 </div>
                 <div className="hidden md:block">
                   <h1 className="text-xl font-bold text-gray-900">Knowledge System</h1>
@@ -296,8 +296,8 @@ const Navigation: React.FC = () => {
         {/* Mobile menu header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-sdg-gradient rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">SDG</span>
+            <div className="w-8 h-8 bg-sdg-gradient rounded-lg flex items-center justify-center overflow-hidden">
+              <img src="/SDG_logo.png" alt="SDG Logo" className="w-6 h-6 object-contain" />
             </div>
             <span className="font-semibold text-gray-900">Menu</span>
           </div>
