@@ -29,6 +29,7 @@ import CollaborativeForm from './pages/Form/components/CollaborativeForm';
 import ForceLoginRoute from './components/Navigation/ForceLoginRoute';
 import AboutUs from './pages/AboutUs/AboutUs';
 import ScrollToTop from './components/ScrollToTop';
+import DataManagement from './pages/DataManagement/DataManagement';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
 import PasswordResetSuccess from './pages/Auth/PasswordResetSuccess';
@@ -49,6 +50,7 @@ import Goal14 from './pages/SDGTargets/Goal14';
 import Goal15 from './pages/SDGTargets/Goal15';
 import Goal16 from './pages/SDGTargets/Goal16';
 import Goal17 from './pages/SDGTargets/Goal17';
+
 
 function App() {
   return (
@@ -96,6 +98,7 @@ function App() {
             <Route path="/team/:teamId/forms/:formId" element={<CollaborativeForm />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/liked" element={<LikedPage />} />
+            <Route path="/data-management" element={<DataManagement />} />
             
             <Route path="/search" element={<Layout><SearchResultPage /></Layout>} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

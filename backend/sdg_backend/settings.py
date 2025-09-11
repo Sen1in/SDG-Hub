@@ -44,6 +44,7 @@ LOCAL_APPS = [
     'apps.search.apps.SearchConfig',
     'apps.form.apps.FormConfig',
     'apps.notifications.apps.NotificationsConfig',
+    'apps.data_management.apps.DataManagementConfig',
     'api',
 ]
 
@@ -303,3 +304,8 @@ EMAIL_TIMEOUT = 30
 
 EMAIL_VERIFICATION_CODE_EXPIRE_MINUTES = 5 
 EMAIL_VERIFICATION_CODE_RESEND_INTERVAL_MINUTES = 1 
+
+# File upload settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 20000 
