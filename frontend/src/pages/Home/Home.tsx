@@ -151,14 +151,23 @@ const Home: React.FC = () => {
   };
 
   const sdgGoals = [
-    { id: 1, title: 'No Poverty', color: 'bg-red-500', emoji: '🏠' },
-    { id: 2, title: 'Zero Hunger', color: 'bg-yellow-500', emoji: '🍎' },
-    { id: 3, title: 'Good Health', color: 'bg-green-500', emoji: '🏥' },
-    { id: 4, title: 'Quality Education', color: 'bg-red-600', emoji: '📚' },
-    { id: 5, title: 'Gender Equality', color: 'bg-orange-500', emoji: '⚖️' },
-    { id: 6, title: 'Clean Water', color: 'bg-blue-400', emoji: '💧' },
-    { id: 7, title: 'Clean Energy', color: 'bg-yellow-400', emoji: '⚡' },
-    { id: 8, title: 'Economic Growth', color: 'bg-red-700', emoji: '💼' },
+    { id: 1, image: '/17-SDG-logos/E_PRINT_01.jpg' },
+    { id: 2, image: '/17-SDG-logos/E_PRINT_02.jpg' },
+    { id: 3, image: '/17-SDG-logos/E_PRINT_03.jpg' },
+    { id: 4, image: '/17-SDG-logos/E_PRINT_04.jpg' },
+    { id: 5, image: '/17-SDG-logos/E_PRINT_05.jpg' },
+    { id: 6, image: '/17-SDG-logos/E_PRINT_06.jpg' },
+    { id: 7, image: '/17-SDG-logos/E_PRINT_07.jpg' },
+    { id: 8, image: '/17-SDG-logos/E_PRINT_08.jpg' },
+    { id: 9, image: '/17-SDG-logos/E_PRINT_09.jpg' },
+    { id: 10, image: '/17-SDG-logos/E_PRINT_10.jpg' },
+    { id: 11, image: '/17-SDG-logos/E_PRINT_11.jpg' },
+    { id: 12, image: '/17-SDG-logos/E_PRINT_12.jpg' },
+    { id: 13, image: '/17-SDG-logos/E_PRINT_13.jpg' },
+    { id: 14, image: '/17-SDG-logos/E_PRINT_14.jpg' },
+    { id: 15, image: '/17-SDG-logos/E_PRINT_15.jpg' },
+    { id: 16, image: '/17-SDG-logos/E_PRINT_16.jpg' },
+    { id: 17, image: '/17-SDG-logos/E_PRINT_17.jpg' },
   ];
 
   const features = [
@@ -529,55 +538,26 @@ const Home: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
             {sdgGoals.map((goal, index) => (
-              <div
+              <Link
                 key={goal.id}
-                className={`${goal.color} rounded-xl p-4 text-white text-center hover:scale-105 transition-transform duration-200 cursor-pointer group`}
+                to={`/sdg-targets/goal-${goal.id}`}
+                className="block rounded-xl overflow-hidden hover:scale-105 transition-transform duration-200 cursor-pointer group shadow-lg hover:shadow-xl"
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
-                <div className="text-3xl mb-2 group-hover:animate-bounce-subtle">
-                  {goal.emoji}
-                </div>
-                <div className="text-sm font-bold mb-1">Goal {goal.id}</div>
-                <div className="text-xs leading-tight">{goal.title}</div>
-              </div>
+                <img
+                  src={goal.image}
+                  alt={`SDG Goal ${goal.id}`}
+                  className="w-full h-auto"
+                />
+              </Link>
             ))}
           </div>
 
-          <div className="text-center mt-12">
-            <Link
-              to="/search"
-              className="btn-primary px-8 py-4 text-lg hover:scale-105 transition-transform duration-200"
-            >
-              View All 17 Goals
-            </Link>
-          </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div className="p-8">
-              <div className="text-4xl md:text-5xl font-bold text-sdg-primary mb-4">5,300+</div>
-              <div className="text-xl font-semibold text-gray-900 mb-2">Total Resources</div>
-              <div className="text-gray-600">Comprehensive database of SDG-related content</div>
-            </div>
-            <div className="p-8">
-              <div className="text-4xl md:text-5xl font-bold text-sdg-secondary mb-4">169</div>
-              <div className="text-xl font-semibold text-gray-900 mb-2">SDG Targets</div>
-              <div className="text-gray-600">Specific targets across all 17 goals</div>
-            </div>
-            <div className="p-8">
-              <div className="text-4xl md:text-5xl font-bold text-sdg-accent mb-4">∞</div>
-              <div className="text-xl font-semibold text-gray-900 mb-2">Impact Potential</div>
-              <div className="text-gray-600">Unlimited possibilities for positive change</div>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };

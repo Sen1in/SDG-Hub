@@ -23,8 +23,8 @@ import { NotificationProvider } from './hooks/useNotification';
 import LikedPage from './pages/Liked/LikedPage';
 import TeamForms from './pages/Form/TeamForms';
 import SearchResultPage from './pages/Search/SearchResultPage';
-import ProtectedRoute from './components/Layout/ProtectedRoute'; // Import ProtectedRoute
-import AnalyzePage from './pages/Analyze/AnalyzePage'; // Import AnalyzePage
+import ProtectedRoute from './components/Layout/ProtectedRoute'; 
+import AnalyzePage from './pages/Analyze/AnalyzePage'; 
 import CollaborativeForm from './pages/Form/components/CollaborativeForm';
 import ForceLoginRoute from './components/Navigation/ForceLoginRoute';
 import AboutUs from './pages/AboutUs/AboutUs';
@@ -32,7 +32,6 @@ import ScrollToTop from './components/ScrollToTop';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
 import PasswordResetSuccess from './pages/Auth/PasswordResetSuccess';
-
 
 function App() {
   return (
@@ -96,6 +95,7 @@ function App() {
                 </Layout>
               } 
             />
+            
             
           </Routes>
         </NotificationProvider>
