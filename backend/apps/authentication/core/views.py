@@ -7,9 +7,10 @@ from django.utils import timezone
 from datetime import timedelta
 from .serializers import RegisterSerializer, LoginSerializer, EmailCodeSerializer
 from ..profile.serializers import UserSerializer
-from .models import EmailVerificationCode
-from .utils import send_verification_email
+from .models import EmailVerificationCode, PasswordResetToken
+from .utils import send_verification_email, send_password_reset_email
 from ..tokens import AutoLoginRefreshToken
+from .serializers import PasswordResetCodeSerializer, PasswordResetVerifySerializer, PasswordResetSerializer
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
@@ -169,3 +170,104 @@ def refresh_token(request):
             {'error': 'Invalid refresh token'}, 
             status=status.HTTP_401_UNAUTHORIZED
         )
+
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def send_reset_code(request):
+    """Send password reset verification code"""
+    serializer = PasswordResetCodeSerializer(data=request.data)
+    if serializer.is_valid():
+        email = serializer.validated_data['email']
+        
+        # Check rate limiting (only one code per minute)
+        one_minute_ago = timezone.now() - timedelta(minutes=1)
+        recent_code = EmailVerificationCode.objects.filter(
+            email=email,
+            created_at__gte=one_minute_ago
+        ).first()
+        
+        if recent_code:
+            return Response({
+                'error': 'Please wait at least 1 minute before requesting another code'
+            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        
+        try:
+            # Create verification code
+            verification_code = EmailVerificationCode.create_code(email)
+            
+            # Send password reset email
+            success, message = send_password_reset_email(email, verification_code.code)
+            
+            if success:
+                return Response({
+                    'message': 'Password reset code sent successfully',
+                    'email': email
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    'error': message
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+        except Exception as e:
+            return Response({
+                'error': f'Failed to send password reset code: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def verify_reset_code(request):
+    """Verify password reset code and generate reset token"""
+    serializer = PasswordResetVerifySerializer(data=request.data)
+    if serializer.is_valid():
+        email = serializer.validated_data['email']
+        
+        try:
+            # Create password reset token
+            reset_token = PasswordResetToken.create_token(email)
+            
+            return Response({
+                'message': 'Code verified successfully',
+                'reset_token': reset_token.token,
+                'email': email
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Failed to generate reset token: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def reset_password(request):
+    """Reset user password"""
+    serializer = PasswordResetSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.validated_data['user']
+        new_password = serializer.validated_data['password']
+        
+        try:
+            # Update user password
+            user.set_password(new_password)
+            user.save()
+            
+            # Update last_login timestamp
+            user.last_login = timezone.now()
+            user.save(update_fields=['last_login'])
+            
+            return Response({
+                'message': 'Password reset successfully',
+                'email': user.email
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Failed to reset password: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

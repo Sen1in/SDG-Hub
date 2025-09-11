@@ -151,3 +151,74 @@ class RegisterSerializer(serializers.ModelSerializer, AuthValidationMixin):
         profile.save()
         
         return user
+
+class PasswordResetCodeSerializer(serializers.Serializer):
+    """Password reset email code sender serializer"""
+    email = serializers.EmailField()
+    
+    def validate_email(self, value):
+        # Check email format
+        if not EmailValidator.validate_format(value):
+            raise serializers.ValidationError("Invalid email format")
+        
+        # Check if email exists in system
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("No account found with this email address")
+        
+        return value
+
+class PasswordResetVerifySerializer(serializers.Serializer):
+    """Password reset code verification serializer"""
+    email = serializers.EmailField()
+    email_code = serializers.CharField(max_length=6, min_length=6)
+    
+    def validate_email_code(self, value):
+        """Validate email verification code format"""
+        if not value.isdigit():
+            raise serializers.ValidationError("Verification code must contain only numbers")
+        if len(value) != 6:
+            raise serializers.ValidationError("Verification code must be 6 digits")
+        return value
+    
+    def validate(self, attrs):
+        email = attrs.get('email')
+        email_code = attrs.get('email_code')
+        
+        # Verify the email verification code
+        is_valid, message = EmailVerificationCode.verify_code(email, email_code)
+        if not is_valid:
+            raise serializers.ValidationError({"email_code": message})
+        
+        return attrs
+
+class PasswordResetSerializer(serializers.Serializer):
+    """Password reset serializer"""
+    email = serializers.EmailField()
+    reset_token = serializers.CharField()
+    password = serializers.CharField(write_only=True, min_length=6)
+    password_confirm = serializers.CharField(write_only=True)
+    
+    def validate(self, attrs):
+        password = attrs.get('password')
+        password_confirm = attrs.get('password_confirm')
+        email = attrs.get('email')
+        reset_token = attrs.get('reset_token')
+        
+        # Validate password match
+        if password != password_confirm:
+            raise serializers.ValidationError({"password_confirm": "Passwords do not match"})
+        
+        # Verify reset token
+        from .models import PasswordResetToken
+        is_valid, message = PasswordResetToken.verify_and_use_token(email, reset_token)
+        if not is_valid:
+            raise serializers.ValidationError({"reset_token": message})
+        
+        # Check if user exists
+        try:
+            user = User.objects.get(email=email)
+            attrs['user'] = user
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"email": "User not found"})
+        
+        return attrs

@@ -63,6 +63,8 @@ export const useFormValidation = () => {
     validateLoginForm, 
     validateRegisterForm,
     validateEmail,
-    validateEmailCode
+    validateEmailCode,
+    validatePassword,       
+    validatePasswordConfirm  
   };
 };

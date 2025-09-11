@@ -29,6 +29,9 @@ import CollaborativeForm from './pages/Form/components/CollaborativeForm';
 import ForceLoginRoute from './components/Navigation/ForceLoginRoute';
 import AboutUs from './pages/AboutUs/AboutUs';
 import ScrollToTop from './components/ScrollToTop';
+import ForgotPassword from './pages/Auth/ForgotPassword';
+import ResetPassword from './pages/Auth/ResetPassword';
+import PasswordResetSuccess from './pages/Auth/PasswordResetSuccess';
 
 
 function App() {
@@ -79,6 +82,9 @@ function App() {
             <Route path="/liked" element={<LikedPage />} />
             
             <Route path="/search" element={<Layout><SearchResultPage /></Layout>} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/password-reset-success" element={<PasswordResetSuccess />} />
             
             <Route 
               path="/analyze" 
