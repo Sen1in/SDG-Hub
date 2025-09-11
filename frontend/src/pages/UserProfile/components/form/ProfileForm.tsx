@@ -136,7 +136,8 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
     const baseOptions = [
       { value: '', label: 'Please select' },
       { value: 'English', label: 'English' },
-      { value: 'Mandarin Chinese', label: 'Mandarin Chinese (中文)' },
+      { value: 'Simplified Chinese', label: 'Simplified Chinese (简体中文)' },
+      { value: 'Traditional Chinese', label: 'Traditional Chinese (繁體中文)' },
       { value: 'Spanish', label: 'Spanish (Español)' },
       { value: 'Hindi', label: 'Hindi (हिन्दी)' },
       { value: 'Arabic', label: 'Arabic (العربية)' },
