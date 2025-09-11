@@ -20,7 +20,7 @@ class UserProfile(models.Model):
     bio = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    gender = models.CharField(max_length=10, blank=True, null=True)
+    gender = models.CharField(max_length=50, blank=True, null=True)
     language = models.CharField(max_length=100, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     profile_picture = models.URLField(blank=True, null=True)
