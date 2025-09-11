@@ -1,31 +1,25 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { BackToHomeButton } from './components/shared/BackToHomeButton';
 import { AuthHeader } from './components/shared/AuthHeader';
-import { UsernameField } from './components/shared/LoginUsernameField';
 import { PasswordField } from './components/shared/PasswordField';
-import { FormActions } from './components/login/FormActions';
+import { PasswordConfirmField } from './components/register/PasswordConfirmField';
 import { ErrorMessage } from './components/shared/ErrorMessage';
 import { SubmitButton } from './components/shared/SubmitButton';
-import { RegisterPrompt } from './components/login/RegisterPrompt';
 import { AuthFooter } from './components/shared/AuthFooter';
-import { useLoginForm } from './hooks/useLoginForm';
+import { useResetPasswordForm } from './hooks/useResetPasswordForm';
 
-const Login: React.FC = () => {
-  const navigate = useNavigate();
+const ResetPassword: React.FC = () => {
   const {
     formData,
     showPassword,
     setShowPassword,
+    showConfirmPassword,
+    setShowConfirmPassword,
     errors,
     loading,
     handleChange,
     handleSubmit
-  } = useLoginForm();
-
-  const handleForgotPassword = () => {
-    navigate('/forgot-password');
-  };
+  } = useResetPasswordForm();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -35,19 +29,13 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         
         <AuthHeader 
-          title="Welcome Back"
-          subtitle="Login to access SDG Knowledge System"
+          title="Reset Password"
+          subtitle="Enter your new password"
         />
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            <UsernameField 
-              value={formData.login}
-              onChange={handleChange}
-              error={errors.login}
-            />
-
             <PasswordField 
               value={formData.password}
               onChange={handleChange}
@@ -56,17 +44,21 @@ const Login: React.FC = () => {
               error={errors.password}
             />
 
-            <FormActions onForgotPassword={handleForgotPassword} />
+            <PasswordConfirmField 
+              value={formData.password_confirm}
+              onChange={handleChange}
+              showPassword={showConfirmPassword}
+              onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
+              error={errors.password_confirm}
+            />
 
             {errors.general && <ErrorMessage message={errors.general} />}
 
             <SubmitButton 
               loading={loading}
-              loadingText="Logging in..."
-              text="Login"
+              loadingText="Resetting password..."
+              text="Reset Password"
             />
-
-            <RegisterPrompt />
 
           </form>
         </div>
@@ -78,4 +70,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default ResetPassword;
