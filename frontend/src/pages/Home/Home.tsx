@@ -389,66 +389,23 @@ const Home: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex flex-col space-y-4">
-            {/* First row - 6 goals */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {sdgGoals.slice(0, 6).map((goal, index) => (
-                <Link
-                  key={goal.id}
-                  to={`/sdg-targets/goal-${goal.id}`}
-                  className="block rounded-xl overflow-hidden transition-transform duration-200 cursor-pointer group shadow-lg hover:shadow-xl"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                  onMouseEnter={() => setHoveredGoal(goal.id)}
-                  onMouseLeave={() => setHoveredGoal(null)}
-                >
-                  <img
-                    src={hoveredGoal === goal.id ? goal.animatedImage : goal.staticImage}
-                    alt={`SDG Goal ${goal.id}`}
-                    className="w-full h-auto transition-all duration-300"
-                  />
-                </Link>
-              ))}
-            </div>
-            
-            {/* Second row - 6 goals */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {sdgGoals.slice(6, 12).map((goal, index) => (
-                <Link
-                  key={goal.id}
-                  to={`/sdg-targets/goal-${goal.id}`}
-                  className="block rounded-xl overflow-hidden transition-transform duration-200 cursor-pointer group shadow-lg hover:shadow-xl"
-                  style={{ animationDelay: `${(index + 6) * 0.05}s` }}
-                  onMouseEnter={() => setHoveredGoal(goal.id)}
-                  onMouseLeave={() => setHoveredGoal(null)}
-                >
-                  <img
-                    src={hoveredGoal === goal.id ? goal.animatedImage : goal.staticImage}
-                    alt={`SDG Goal ${goal.id}`}
-                    className="w-full h-auto transition-all duration-300"
-                  />
-                </Link>
-              ))}
-            </div>
-            
-            {/* Third row - 5 goals */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {sdgGoals.slice(12, 17).map((goal, index) => (
-                <Link
-                  key={goal.id}
-                  to={`/sdg-targets/goal-${goal.id}`}
-                  className="block rounded-xl overflow-hidden transition-transform duration-200 cursor-pointer group shadow-lg hover:shadow-xl"
-                  style={{ animationDelay: `${(index + 12) * 0.05}s` }}
-                  onMouseEnter={() => setHoveredGoal(goal.id)}
-                  onMouseLeave={() => setHoveredGoal(null)}
-                >
-                  <img
-                    src={hoveredGoal === goal.id ? goal.animatedImage : goal.staticImage}
-                    alt={`SDG Goal ${goal.id}`}
-                    className="w-full h-auto transition-all duration-300"
-                  />
-                </Link>
-              ))}
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+            {sdgGoals.map((goal, index) => (
+              <Link
+                key={goal.id}
+                to={`/sdg-targets/goal-${goal.id}`}
+                className="block rounded-xl overflow-hidden hover:scale-105 transition-transform duration-200 cursor-pointer group shadow-lg hover:shadow-xl"
+                style={{ animationDelay: `${index * 0.05}s` }}
+                onMouseEnter={() => setHoveredGoal(goal.id)}
+                onMouseLeave={() => setHoveredGoal(null)}
+              >
+                <img
+                  src={hoveredGoal === goal.id ? goal.animatedImage : goal.staticImage}
+                  alt={`SDG Goal ${goal.id}`}
+                  className="w-full h-auto transition-all duration-300"
+                />
+              </Link>
+            ))}
           </div>
         </div>
       </section>
