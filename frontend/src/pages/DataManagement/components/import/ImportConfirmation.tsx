@@ -46,16 +46,74 @@ export const ImportConfirmation: React.FC<ImportConfirmationProps> = ({
           <div className="text-6xl mb-4">✅</div>
           <h2 className="text-2xl font-bold text-green-900 mb-2">Import Completed</h2>
           <p className="text-gray-600 mb-4">{importResult.message}</p>
-          <div className="bg-green-50 p-4 rounded-lg mb-6">
-            <p className="text-green-800">
-              <span className="font-medium">Imported:</span> {importResult.imported_count} records
-            </p>
-            {importResult.skipped_count > 0 && (
+          
+          {/* Import Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-green-50 p-4 rounded-lg">
               <p className="text-green-800">
-                <span className="font-medium">Skipped:</span> {importResult.skipped_count} duplicates
+                <span className="font-medium text-lg block">{importResult.imported_count}</span>
+                <span className="text-sm">Successfully Imported</span>
               </p>
+            </div>
+            {importResult.skipped_count > 0 && (
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <p className="text-yellow-800">
+                  <span className="font-medium text-lg block">{importResult.skipped_count}</span>
+                  <span className="text-sm">Skipped (Duplicates)</span>
+                </p>
+              </div>
+            )}
+            {importResult.failed_count > 0 && (
+              <div className="bg-red-50 p-4 rounded-lg">
+                <p className="text-red-800">
+                  <span className="font-medium text-lg block">{importResult.failed_count}</span>
+                  <span className="text-sm">Failed to Import</span>
+                </p>
+              </div>
             )}
           </div>
+
+          {/* Failed Records Details */}
+          {importResult.failed_records && importResult.failed_records.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-left font-medium text-gray-800 mb-3">
+                Failed Import Records ({importResult.failed_records.length} total)
+              </h3>
+              <div className="space-y-2 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-4 bg-gray-50 text-left">
+                {importResult.failed_records.map((failedRecord, index) => (
+                  <div key={index} className="p-3 bg-red-50 border border-red-200 rounded shadow-sm">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm text-red-800">
+                          <span className="font-medium">
+                            "{database === 'education' ? failedRecord.record.title : failedRecord.record.actions}"
+                          </span>
+                        </p>
+                        <div className="flex items-center space-x-4 mt-1">
+                          <span className="text-xs text-red-600">
+                            Row {failedRecord.record._row_index || 'Unknown'}
+                          </span>
+                          <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">
+                            {failedRecord.error}
+                          </span>
+                        </div>
+                        {failedRecord.details && (
+                          <p className="text-xs text-red-600 mt-1">
+                            Details: {failedRecord.details}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-red-600 text-lg">❌</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 text-xs text-gray-600 text-left">
+                <span>These records could not be imported. Please check the data and try again.</span>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={onReset}
             className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"

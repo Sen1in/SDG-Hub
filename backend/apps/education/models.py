@@ -25,8 +25,7 @@ class EducationDb(models.Model):
     column15 = models.CharField(db_column='Column15', max_length=50, blank=True, null=True)
     column16 = models.CharField(db_column='Column16', max_length=50, blank=True, null=True)
     
-    class Meta:
-        managed = False  
+    class Meta: 
         db_table = 'education_db'
         verbose_name = 'Education Resource'
         verbose_name_plural = 'Education Resources'

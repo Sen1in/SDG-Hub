@@ -14,21 +14,40 @@ export const SDGBadge: React.FC<SDGBadgeProps> = ({
   showTitle = false,
   className = '' 
 }) => {
-  const sizeClasses = {
-    sm: 'w-5 h-5 text-xs',
-    md: 'w-6 h-6 text-xs',
-    lg: 'w-8 h-8 text-sm'
+  const badgeSizeClasses = {
+    sm: 'w-5 h-5 min-w-5 text-xs',
+    md: 'w-6 h-6 min-w-6 text-xs', 
+    lg: 'w-8 h-8 min-w-8 text-sm'
   };
+
+  const titleTextSizes = {
+    sm: 'text-xs',
+    md: 'text-sm',
+    lg: 'text-base'
+  };
+
+  if (showTitle) {
+    return (
+      <div className={`inline-flex items-center gap-2 ${className}`}>
+        <span
+          className={`flex items-center justify-center rounded font-semibold text-white flex-shrink-0 ${getSDGColor(sdg)} ${badgeSizeClasses[size]}`}
+          title={`SDG ${sdg} - ${getSDGTitle(sdg)}`}
+        >
+          {sdg}
+        </span>
+        <span className={`font-medium text-gray-700 ${titleTextSizes[size]} hidden sm:inline`}>
+          {getSDGTitle(sdg)}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <span
-      className={`inline-flex items-center justify-center rounded font-semibold text-white ${getSDGColor(sdg)} ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center justify-center rounded font-semibold text-white flex-shrink-0 ${getSDGColor(sdg)} ${badgeSizeClasses[size]} ${className}`}
       title={`SDG ${sdg} - ${getSDGTitle(sdg)}`}
     >
       {sdg}
-      {showTitle && (
-        <span className="ml-2 hidden sm:inline">{getSDGTitle(sdg)}</span>
-      )}
     </span>
   );
 };

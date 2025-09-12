@@ -59,10 +59,20 @@ export interface ProcessFileResponse {
   total_rows: number;
 }
 
+// Enhanced ImportResponse with failed records
+export interface FailedRecord {
+  record: any;
+  error: string;
+  details?: string;
+  row_index?: number;
+}
+
 export interface ImportResponse {
   message: string;
   imported_count: number;
   skipped_count: number;
+  failed_count: number;
+  failed_records?: FailedRecord[];
 }
 
 export interface DatabaseSchema {

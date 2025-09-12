@@ -9,6 +9,7 @@ from django.core.paginator import Paginator
 from django.db import connection
 import pandas as pd
 import re
+import traceback
 
 # Import your existing models
 from ..education.models import EducationDb
@@ -164,7 +165,7 @@ def education_excel_upload(request):
 @permission_classes([IsAuthenticated])
 @user_passes_test(is_admin_user)
 def education_import_confirm(request):
-    """Confirm and execute education data import"""
+    """Confirm and execute education data import with detailed error tracking"""
     try:
         import_data = request.data.get('data', [])
         skip_duplicates = request.data.get('skip_duplicates', True)
@@ -179,6 +180,7 @@ def education_import_confirm(request):
         imported_count = 0
         skipped_count = 0
         failed_count = 0
+        failed_records = []
         
         with connection.cursor() as cursor:
             for i, record in enumerate(import_data):
@@ -193,17 +195,19 @@ def education_import_confirm(request):
                             skipped_count += 1
                             continue
                     
-                    # Insert record
-                    insert_sql = """
-                        INSERT INTO education_db (
-                            Title, descriptions, Aims, `Learning outcome( Expecting outcome)`, 
-                            `SDGs related`, `Type label`, Location, Organization, Year, 
-                            `Related to which discipline`, `Useful for which industries`, 
-                            Source, Link
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """
-
-                    cursor.execute(insert_sql, [
+                    # Validate required fields before insert
+                    if not record.get('title'):
+                        failed_count += 1
+                        failed_records.append({
+                            'record': record,
+                            'error': 'Missing required field: title',
+                            'details': 'Title field is required for education records',
+                            'row_index': record.get('_row_index', i + 1)
+                        })
+                        continue
+                    
+                    # Prepare data for insertion
+                    insert_data = [
                         record.get('title', ''),
                         record.get('descriptions', ''),
                         record.get('aims', ''),
@@ -217,11 +221,45 @@ def education_import_confirm(request):
                         record.get('useful_for_which_industries', ''),
                         record.get('source', ''),
                         record.get('link', ''),
-                    ])
+                    ]
+                    
+                    # Insert record
+                    insert_sql = """
+                        INSERT INTO education_db (
+                            Title, descriptions, Aims, `Learning outcome( Expecting outcome)`, 
+                            `SDGs related`, `Type label`, Location, Organization, Year, 
+                            `Related to which discipline`, `Useful for which industries`, 
+                            Source, Link
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """
+
+                    cursor.execute(insert_sql, insert_data)
                     imported_count += 1
                     
                 except Exception as e:
                     failed_count += 1
+                    error_msg = str(e)
+                    
+                    # Categorize common errors
+                    if 'Data too long' in error_msg:
+                        error_type = 'Data too long for field'
+                        details = 'One or more fields exceed maximum length'
+                    elif 'Duplicate entry' in error_msg:
+                        error_type = 'Duplicate entry'
+                        details = 'Record already exists in database'
+                    elif 'cannot be null' in error_msg.lower():
+                        error_type = 'Missing required field'
+                        details = 'Required field is missing or empty'
+                    else:
+                        error_type = 'Database error'
+                        details = error_msg
+                    
+                    failed_records.append({
+                        'record': record,
+                        'error': error_type,
+                        'details': details,
+                        'row_index': record.get('_row_index', i + 1)
+                    })
                     continue
         
         return Response({
@@ -229,6 +267,7 @@ def education_import_confirm(request):
             'imported_count': imported_count,
             'skipped_count': skipped_count,
             'failed_count': failed_count,
+            'failed_records': failed_records[:50]  # Limit to first 50 failed records
         })
         
     except Exception as e:
@@ -382,7 +421,7 @@ def actions_excel_upload(request):
 @permission_classes([IsAuthenticated])
 @user_passes_test(is_admin_user)
 def actions_import_confirm(request):
-    """Confirm and execute actions data import"""
+    """Confirm and execute actions data import with detailed error tracking"""
     try:
         import_data = request.data.get('data', [])
         skip_duplicates = request.data.get('skip_duplicates', True)
@@ -397,6 +436,7 @@ def actions_import_confirm(request):
         imported_count = 0
         skipped_count = 0
         failed_count = 0
+        failed_records = []
         
         with connection.cursor() as cursor:
             for i, record in enumerate(import_data):
@@ -411,17 +451,19 @@ def actions_import_confirm(request):
                             skipped_count += 1
                             continue
                     
-                    # Insert record
-                    insert_sql = """
-                        INSERT INTO action_db (
-                            Actions, `Action detail`, ` SDGs`, Level, `Individual/Organization`,
-                            `Location (specific actions/org onlyonly)`, `Related Industry (org only)`,
-                            `Digital actions`, `Source descriptions`, `Award descriptions`, Award,
-                            `Source Links`, `Additional Notes`
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """
+                    # Validate required fields before insert
+                    if not record.get('actions'):
+                        failed_count += 1
+                        failed_records.append({
+                            'record': record,
+                            'error': 'Missing required field: actions',
+                            'details': 'Actions field is required for action records',
+                            'row_index': record.get('_row_index', i + 1)
+                        })
+                        continue
                     
-                    cursor.execute(insert_sql, [
+                    # Prepare data for insertion
+                    insert_data = [
                         record.get('actions', ''),
                         record.get('action_detail', ''),
                         record.get('field_sdgs', ''),
@@ -435,11 +477,48 @@ def actions_import_confirm(request):
                         record.get('award', None),
                         record.get('source_links', ''),
                         record.get('additional_notes', ''),
-                    ])
+                    ]
+                    
+                    # Insert record
+                    insert_sql = """
+                        INSERT INTO action_db (
+                            Actions, `Action detail`, ` SDGs`, Level, `Individual/Organization`,
+                            `Location (specific actions/org onlyonly)`, `Related Industry (org only)`,
+                            `Digital actions`, `Source descriptions`, `Award descriptions`, Award,
+                            `Source Links`, `Additional Notes`
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """
+                    
+                    cursor.execute(insert_sql, insert_data)
                     imported_count += 1
                     
                 except Exception as e:
                     failed_count += 1
+                    error_msg = str(e)
+                    
+                    # Categorize common errors
+                    if 'Data too long' in error_msg:
+                        error_type = 'Data too long for field'
+                        details = 'One or more fields exceed maximum length'
+                    elif 'Duplicate entry' in error_msg:
+                        error_type = 'Duplicate entry'
+                        details = 'Record already exists in database'
+                    elif 'cannot be null' in error_msg.lower():
+                        error_type = 'Missing required field'
+                        details = 'Required field is missing or empty'
+                    elif 'Incorrect integer value' in error_msg:
+                        error_type = 'Invalid data type'
+                        details = 'Level field must be a valid integer'
+                    else:
+                        error_type = 'Database error'
+                        details = error_msg
+                    
+                    failed_records.append({
+                        'record': record,
+                        'error': error_type,
+                        'details': details,
+                        'row_index': record.get('_row_index', i + 1)
+                    })
                     continue
         
         return Response({
@@ -447,6 +526,7 @@ def actions_import_confirm(request):
             'imported_count': imported_count,
             'skipped_count': skipped_count,
             'failed_count': failed_count,
+            'failed_records': failed_records[:50]  # Limit to first 50 failed records
         })
         
     except Exception as e:
@@ -456,7 +536,7 @@ def actions_import_confirm(request):
         )
 
 # =============================================================================
-# UTILITY FUNCTIONS
+# UTILITY FUNCTIONS (unchanged from original)
 # =============================================================================
 
 def map_education_columns(excel_columns):
@@ -626,27 +706,41 @@ def validate_actions_data(df, column_mapping):
     }
 
 def check_education_duplicates(valid_records):
-    """Check for duplicate education records based on title"""
+    """Check for duplicate education records - FIXED to match import logic exactly"""
     duplicates = []
     seen_titles = set()
     
-    # Also check against existing database records
     with connection.cursor() as cursor:
-        cursor.execute("SELECT LOWER(Title) FROM education_db WHERE Title IS NOT NULL")
-        existing_titles = {row[0] for row in cursor.fetchall()}
-    
-    for i, record in enumerate(valid_records):
-        title = record.get('title', '').lower().strip()
-        if title:
-            if title in seen_titles or title in existing_titles:
-                duplicates.append({
-                    'index': i,
-                    'record': record,
-                    'duplicate_title': record.get('title', ''),
-                    'type': 'existing' if title in existing_titles else 'in_file'
-                })
-            else:
-                seen_titles.add(title)
+        for i, record in enumerate(valid_records):
+            title = record.get('title', '').strip()
+            if title:
+                title_lower = title.lower()
+                
+                # Check for duplicates within the file first
+                if title_lower in seen_titles:
+                    duplicates.append({
+                        'index': i,
+                        'record': record,
+                        'duplicate_title': title,
+                        'type': 'in_file'
+                    })
+                    continue
+                
+                # Check against database using EXACT same query as import phase
+                cursor.execute(
+                    "SELECT id FROM education_db WHERE LOWER(Title) = LOWER(%s)",
+                    [title]
+                )
+                if cursor.fetchone():
+                    duplicates.append({
+                        'index': i,
+                        'record': record,
+                        'duplicate_title': title,
+                        'type': 'existing'
+                    })
+                else:
+                    # Only add to seen_titles if it's truly unique
+                    seen_titles.add(title_lower)
     
     return {
         'duplicates': duplicates,
@@ -654,27 +748,41 @@ def check_education_duplicates(valid_records):
     }
 
 def check_actions_duplicates(valid_records):
-    """Check for duplicate action records based on actions field"""
+    """Check for duplicate action records - FIXED to match import logic exactly"""
     duplicates = []
     seen_actions = set()
     
-    # Also check against existing database records
     with connection.cursor() as cursor:
-        cursor.execute("SELECT LOWER(Actions) FROM action_db WHERE Actions IS NOT NULL")
-        existing_actions = {row[0] for row in cursor.fetchall()}
-    
-    for i, record in enumerate(valid_records):
-        action = record.get('actions', '').lower().strip()
-        if action:
-            if action in seen_actions or action in existing_actions:
-                duplicates.append({
-                    'index': i,
-                    'record': record,
-                    'duplicate_title': record.get('actions', ''),
-                    'type': 'existing' if action in existing_actions else 'in_file'
-                })
-            else:
-                seen_actions.add(action)
+        for i, record in enumerate(valid_records):
+            action = record.get('actions', '').strip()
+            if action:
+                action_lower = action.lower()
+                
+                # Check for duplicates within the file first
+                if action_lower in seen_actions:
+                    duplicates.append({
+                        'index': i,
+                        'record': record,
+                        'duplicate_title': action,
+                        'type': 'in_file'
+                    })
+                    continue
+                
+                # Check against database using EXACT same query as import phase
+                cursor.execute(
+                    "SELECT id FROM action_db WHERE LOWER(Actions) = LOWER(%s)",
+                    [action]
+                )
+                if cursor.fetchone():
+                    duplicates.append({
+                        'index': i,
+                        'record': record,
+                        'duplicate_title': action,
+                        'type': 'existing'
+                    })
+                else:
+                    # Only add to seen_actions if it's truly unique
+                    seen_actions.add(action_lower)
     
     return {
         'duplicates': duplicates,
