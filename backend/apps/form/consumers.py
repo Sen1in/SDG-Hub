@@ -224,23 +224,38 @@ class FormCollaborationConsumer(AsyncWebsocketConsumer):
             # Obtain the real user ID
             user = self.scope['user']
             if not user or not user.is_authenticated:
+                print(f"Permission denied: User not authenticated")
                 return False
             
             # Ensure the acquisition of genuine user IDs
             user_id = user.id if hasattr(user, 'id') else None
             if not user_id:
+                print(f"Permission denied: No user ID found")
                 return False
             
             form = Form.objects.get(id=self.form_id)
             
             # Use the user ID instead of the user object
             membership = TeamMembership.objects.filter(
-                user_id=user_id,  
+                user_id=user_id,
                 team=form.team
-            ).exists()
+            ).first()
             
-            return membership
+            if not membership:
+                print(f"Permission denied: User {user_id} is not a team member")
+                return False
+                
+            has_edit_permission = membership.role in ['owner', 'edit']
+            if not has_edit_permission:
+                print(f"Permission denied: User {user_id} has role '{membership.role}', needs 'owner' or 'edit'")
+                
+            return has_edit_permission
+            
+        except Form.DoesNotExist:
+            print(f"Permission denied: Form {self.form_id} not found")
+            return False
         except Exception as e:
+            print(f"Permission check error: {e}")
             return False
     
     @database_sync_to_async

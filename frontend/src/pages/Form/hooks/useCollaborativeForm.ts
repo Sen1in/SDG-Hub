@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { FormContent, ActiveEditor } from '../types/collaboration';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-const WS_BASE_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000';
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+export const WS_BASE_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000';
 
 export const useCollaborativeForm = (formId: string) => {
   const [content, setContent] = useState<FormContent | null>(null);
@@ -11,6 +11,9 @@ export const useCollaborativeForm = (formId: string) => {
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [userPermission, setUserPermission] = useState<string | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
+  const [wsConnectionAttempted, setWsConnectionAttempted] = useState(false);
   
   const wsRef = useRef<WebSocket | null>(null);
   const editTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -22,6 +25,9 @@ export const useCollaborativeForm = (formId: string) => {
   // Obtain the form content
   const fetchFormContent = useCallback(async () => {
     try {
+      setIsLoading(true);
+      setError(null);
+      
       const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_BASE_URL}/api/forms/${formId}/collaborative/`, {
         headers: {
@@ -35,13 +41,25 @@ export const useCollaborativeForm = (formId: string) => {
       }
       
       const data = await response.json();
-
-      console.log('form_status', data.form_status);
-
       setContent(data);
       setHasUnsavedChanges(false);
-      // Empty the queue of items to be saved
       pendingChangesRef.current.clear();
+      const permissionResponse = await fetch(`${API_BASE_URL}/api/forms/${formId}/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (permissionResponse.ok) {
+        const formData = await permissionResponse.json();
+        const permission = formData.permission;
+        setUserPermission(permission);
+        const editPermission = permission === 'admin' || permission === 'write';
+        setCanEdit(editPermission);
+        
+      }
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -92,10 +110,16 @@ export const useCollaborativeForm = (formId: string) => {
 
   // WebSocket
   const connectWebSocket = useCallback(() => {
+    // Don't establish WebSocket connection if no edit permission or already attempted
+    if (!canEdit || wsConnectionAttempted) {
+      return;
+    }
+
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
 
+    setWsConnectionAttempted(true);
     const token = localStorage.getItem('accessToken');
     const wsUrl = `${WS_BASE_URL}/ws/form/${formId}/?token=${token}`;
     
@@ -103,31 +127,28 @@ export const useCollaborativeForm = (formId: string) => {
     
     wsRef.current.onopen = () => {
       setIsConnected(true);
-      console.log('WebSocket connected');
     };
     
-    wsRef.current.onclose = () => {
+    wsRef.current.onclose = (event) => {
       setIsConnected(false);
-      console.log('WebSocket disconnected');
       
-      // Reconnection logic
-      setTimeout(() => {
-        if (wsRef.current?.readyState !== WebSocket.OPEN) {
-          connectWebSocket();
-        }
-      }, 3000);
+      // If permission denied, don't retry
+      if (event.code === 4403 || event.wasClean === false) {
+        setError('Permission denied - unable to establish real-time connection');
+        return;
+      }
     };
     
     wsRef.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
       setIsConnected(false);
+      setError('Permission denied - you do not have edit access');
     };
     
     wsRef.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
       handleWebSocketMessage(data);
     };
-  }, [formId]);
+  }, [formId, canEdit, wsConnectionAttempted]);
 
   // Handling WebSocket messages
   const handleWebSocketMessage = useCallback((data: any) => {
@@ -243,12 +264,15 @@ export const useCollaborativeForm = (formId: string) => {
 
 
   const debouncedUpdate = useCallback((fieldName: string, value: any) => {
+    if (!canEdit) {
+      setError('You do not have permission to edit this form');
+      return;
+    }
+    
     updateLocalContent(fieldName, value);
-    
     broadcastFieldChange(fieldName, value);
-    
     debouncedBatchSave();
-  }, [updateLocalContent, broadcastFieldChange, debouncedBatchSave]);
+  }, [updateLocalContent, broadcastFieldChange, debouncedBatchSave, canEdit]);
 
 
   const saveNow = useCallback(async () => {
@@ -318,9 +342,15 @@ export const useCollaborativeForm = (formId: string) => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [hasUnsavedChanges, saveNow]);
 
+useEffect(() => {
+  fetchFormContent();
+}, [formId]);
+  
   useEffect(() => {
-    fetchFormContent();
-    connectWebSocket();
+    // Only attempt WebSocket connection for users with edit permission
+    if (userPermission !== null && canEdit && !wsConnectionAttempted) {
+      connectWebSocket();
+    }
     
     return () => {
       if (wsRef.current) {
@@ -333,7 +363,7 @@ export const useCollaborativeForm = (formId: string) => {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [fetchFormContent, connectWebSocket]);
+  }, [userPermission, canEdit, connectWebSocket, wsConnectionAttempted]);
 
   return {
     content,
