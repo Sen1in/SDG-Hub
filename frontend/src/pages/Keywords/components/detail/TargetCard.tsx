@@ -6,6 +6,21 @@ interface TargetCardProps {
   target: KeywordResource;
 }
 
+const ReferenceDisplay: React.FC<{ reference: any; label: string }> = ({ reference, label }) => {
+  if (!reference) return null;
+
+  return (
+    <div className="bg-gray-50 p-3 rounded-md">
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-sm font-medium text-gray-700">{label}</h4>
+      </div>
+      <p className="text-sm text-gray-800 leading-relaxed">
+        {reference.source}
+      </p>
+    </div>
+  );
+};
+
 export const TargetCard: React.FC<TargetCardProps> = ({ target }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow">
@@ -23,32 +38,36 @@ export const TargetCard: React.FC<TargetCardProps> = ({ target }) => {
       </div>
 
       {/* Target Description */}
-      <div className="mb-4">
+      <div className="mb-6">
         <h3 className="font-semibold text-gray-900 mb-2">Target Description</h3>
         <p className="text-gray-700 leading-relaxed">{target.target_description}</p>
       </div>
 
-      {/* References */}
-      {(target.reference1 || target.reference2 || target.note) && (
-        <div className="space-y-3">
-          {target.reference1 && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-600 mb-1">Reference 1</h4>
-              <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded">{target.reference1}</p>
-            </div>
+      {/* References Section */}
+      {(target.reference1_detail || target.reference2_detail || target.note) && (
+        <div className="space-y-4">
+          <h3 className="font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-2">
+            References & Notes
+          </h3>
+          
+          {target.reference1_detail && (
+            <ReferenceDisplay 
+              reference={target.reference1_detail} 
+              label="Reference 1" 
+            />
           )}
           
-          {target.reference2 && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-600 mb-1">Reference 2</h4>
-              <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded">{target.reference2}</p>
-            </div>
+          {target.reference2_detail && (
+            <ReferenceDisplay 
+              reference={target.reference2_detail} 
+              label="Reference 2" 
+            />
           )}
           
           {target.note && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-600 mb-1">Note</h4>
-              <p className="text-sm text-gray-700 bg-blue-50 p-2 rounded">{target.note}</p>
+            <div className="bg-blue-50 p-3 rounded-md border-l-4 border-blue-400">
+              <h4 className="text-sm font-medium text-blue-800 mb-1">Note</h4>
+              <p className="text-sm text-blue-700">{target.note}</p>
             </div>
           )}
         </div>

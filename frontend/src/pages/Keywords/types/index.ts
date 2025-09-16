@@ -1,11 +1,22 @@
+export interface Reference {
+  id: number;
+  reference_no: string;
+  source: string;
+}
+
 export interface KeywordResource {
   id: number;
   keyword: string;
   sdg_number: number;
   target_code: string;
   target_description: string;
-  reference1: string;
-  reference2: string;
+  
+  reference1?: number | null;
+  reference2?: number | null;
+  
+  reference1_detail?: Reference | null;
+  reference2_detail?: Reference | null;
+  
   note: string;
   sdg_title: string;
   is_liked: boolean;
@@ -18,7 +29,6 @@ export interface KeywordResource {
   }[];
   target_count?: number;
 }
-
 
 export type KeywordSearchResult = KeywordResource;
 
@@ -50,4 +60,9 @@ export interface PaginatedResponse<T> {
   next: string | null;
   previous: string | null;
   results: T[];
+}
+
+export interface ReferenceListResponse extends PaginatedResponse<Reference> {
+  page: number;
+  page_size: number;
 }
