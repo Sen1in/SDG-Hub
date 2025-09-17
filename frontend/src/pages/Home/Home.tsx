@@ -245,10 +245,17 @@ const Home: React.FC = () => {
             {/* Search Bar */}
             <div className="mb-12 animate-slide-up">
               <AutocompleteSearchBar
+                variant="hero"
                 value={searchQuery}
                 onChange={setSearchQuery}
                 onSearch={handleSearch}
                 onSuggestionClick={handleSuggestionClick}
+                config={{
+                  placeholder: "Search SDG Education, Actions, Keywords...",
+                  minInputLength: 2,
+                  maxSuggestions: 5,
+                  showCount: true
+                }}
               />
             </div>
               
