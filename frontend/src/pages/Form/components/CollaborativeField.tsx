@@ -85,6 +85,9 @@ const CollaborativeField: React.FC<CollaborativeFieldProps> = ({
   };
 
   const handleMultiSelectChange = (selectedValue: string) => {
+    if (isReadOnly) {
+      return;
+    }
     const currentValues = Array.isArray(localValue) ? localValue : [];
     let newValues;
     
@@ -149,8 +152,11 @@ const CollaborativeField: React.FC<CollaborativeFieldProps> = ({
         ? 'border-blue-300 focus:border-blue-500 focus:ring-blue-500' 
         : 'border-gray-300'
       }
-      ${isReadOnly ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}
-      ${activeEditors.length > 0 ? 'ring-2 ring-blue-200' : ''}
+      ${isReadOnly 
+        ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300' 
+        : 'bg-white text-gray-900'
+      }
+      ${activeEditors.length > 0 && !isReadOnly ? 'ring-2 ring-blue-200' : ''}
     `;
 
     switch (config.type) {
