@@ -39,6 +39,9 @@ weasyprint
 markdown
 psycopg2-binary
 python-pptx
+openpyxl
+xlrd
+pandas
 google-auth
 google-auth-oauthlib
 google-auth-httplib2

@@ -5,6 +5,7 @@ from .models import LikedAction
 class ActionDbSerializer(serializers.ModelSerializer):
 
     sdgs_list = serializers.ReadOnlyField()
+    level_list = serializers.ReadOnlyField()
     level_label = serializers.ReadOnlyField()
     individual_organization_label = serializers.ReadOnlyField()
     digital_actions_label = serializers.ReadOnlyField()
@@ -18,7 +19,7 @@ class ActionDbSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'actions', 'action_detail', 
             'field_sdgs', 'sdgs_list',
-            'level', 'level_label',
+            'level', 'level_list', 'level_label',
             'individual_organization', 'individual_organization_label',
             'location_specific_actions_org_onlyonly_field', 'location',
             'related_industry_org_only_field', 'related_industry', 'industry_list',

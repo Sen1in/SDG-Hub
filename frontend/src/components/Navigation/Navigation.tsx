@@ -19,7 +19,7 @@ const Navigation: React.FC = () => {
     { name: 'Home', path: '/', icon: '🏠' },
     { name: 'SDG Actions', path: '/actions', icon: '🎯' },
     { name: 'SDG Education', path: '/education', icon: '📚' },
-    { name: 'Keywords', path: '/keywords', icon: '🔍' },
+    { name: 'Keywords', path: '/keywords', icon: '🔑' },
     { name: 'About Us', path: '/about-us', icon: 'ℹ️' },
   ];
 
@@ -59,9 +59,13 @@ const Navigation: React.FC = () => {
     setShowUserMenu(false);
   };
 
-  // Added Analytics processing function
   const handleAnalyze = () => {
     navigate('/analyze');
+    setShowUserMenu(false);
+  };
+
+  const handleDataManagement = () => {
+    navigate('/data-management');
     setShowUserMenu(false);
   };
 
@@ -73,8 +77,8 @@ const Navigation: React.FC = () => {
             {/* Logo and Brand */}
             <div className="flex items-center space-x-4">
               <Link to="/" className="flex items-center space-x-3 group">
-                <div className="w-10 h-10 bg-sdg-gradient rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-                  <span className="text-white font-bold text-lg">SDG</span>
+                <div className="w-10 h-10 bg-sdg-gradient rounded-lg flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform duration-200">
+                  <img src="/SDG_logo.png" alt="SDG Logo" className="w-8 h-8 object-contain" />
                 </div>
                 <div className="hidden md:block">
                   <h1 className="text-xl font-bold text-gray-900">Knowledge System</h1>
@@ -99,7 +103,7 @@ const Navigation: React.FC = () => {
                   <span>{item.name}</span>
                 </Link>
               ))}
-              {/* New Analytics feature - Available only to administrators */}
+              {/* Analytics feature - Available only to administrators */}
               {isAdmin && (
                 <Link
                   to="/analyze"
@@ -207,6 +211,19 @@ const Navigation: React.FC = () => {
                         </svg>
                         <span>Liked</span>
                       </button>
+
+                      {/* Admin-only Data Management */}
+                      {isAdmin && (
+                        <button
+                          onClick={handleDataManagement}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                          </svg>
+                          <span>Data Management</span>
+                        </button>
+                      )}
                       
                       <button
                         onClick={handleLogout}
@@ -263,8 +280,7 @@ const Navigation: React.FC = () => {
         </div>
       </nav>
 
-      {/* Restore the original version of the mobile sliding navigation completely */}
-      {/* Background mask */}
+      {/* Mobile sliding navigation */}
       <div 
         className={`fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300 z-50 md:hidden ${
           isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
@@ -272,17 +288,16 @@ const Navigation: React.FC = () => {
         onClick={() => setIsMenuOpen(false)}
       />
 
-      {/* Slide menu */}
       <div 
         className={`fixed top-0 right-0 h-full w-80 bg-white shadow-xl transform transition-transform duration-300 ease-in-out z-50 md:hidden ${
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        {/* Top Menu */}
+        {/* Mobile menu header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-sdg-gradient rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">SDG</span>
+            <div className="w-8 h-8 bg-sdg-gradient rounded-lg flex items-center justify-center overflow-hidden">
+              <img src="/SDG_logo.png" alt="SDG Logo" className="w-6 h-6 object-contain" />
             </div>
             <span className="font-semibold text-gray-900">Menu</span>
           </div>
@@ -296,7 +311,7 @@ const Navigation: React.FC = () => {
           </button>
         </div>
 
-        {/* User Information Area - Displayed when logged in */}
+        {/* User Information Area */}
         {isAuthenticated && user && (
           <button
             onClick={() => {
@@ -341,9 +356,10 @@ const Navigation: React.FC = () => {
             </div>
           </button>
         )}
+
+        {/* Mobile user actions */}
         {isAuthenticated && user && (
           <div className="px-4 py-2 space-y-2 border-b border-gray-200">
-            {/* Notifications */}
             <NotificationBadge count={unreadCount}>
               <button
                 onClick={() => {
@@ -378,10 +394,24 @@ const Navigation: React.FC = () => {
               <span className="text-xl">❤️</span>
               <span>Liked</span>
             </button>
+
+            {/* Mobile Data Management - Admin only */}
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  handleDataManagement();
+                  setIsMenuOpen(false);
+                }}
+                className="flex items-center space-x-4 px-4 py-3 rounded-lg text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200 w-full"
+              >
+                <span className="text-xl">🗄️</span>
+                <span>Data Management</span>
+              </button>
+            )}
           </div>
         )}
         
-        {/* Navigation menu item */}
+        {/* Navigation menu items */}
         <div className="px-4 py-4 space-y-2">
           {navigationItems.map((item) => (
             <Link
@@ -399,7 +429,7 @@ const Navigation: React.FC = () => {
             </Link>
           ))}
           
-          {/* Newly added "Analytics" menu item - Only visible to administrators */}
+          {/* Mobile Analytics - Admin only */}
           {isAdmin && (
             <Link
               to="/analyze"
@@ -416,10 +446,9 @@ const Navigation: React.FC = () => {
           )}
         </div>
 
-        {/* Bottom operation area - Absolute positioning ensures visibility */}
+        {/* Bottom action area */}
         <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 p-4 bg-white">
           {isAuthenticated && user ? (
-            /* Logged-in user: Display Sign Out */
             <button
               onClick={() => {
                 handleLogout();
@@ -433,7 +462,6 @@ const Navigation: React.FC = () => {
               <span>Log Out</span>
             </button>
           ) : (
-            /* Unlogged user: Display "Login" */
             <button 
               onClick={() => {
                 handleSignIn();

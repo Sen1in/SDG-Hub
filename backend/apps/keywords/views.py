@@ -6,8 +6,8 @@ from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q, Count, F
 from django.db.models.functions import Lower
 from collections import defaultdict
-from .models import KeywordResource, KeywordLike
-from .serializers import KeywordResourceSerializer, KeywordStatsSerializer
+from .models import KeywordResource, KeywordLike, Reference
+from .serializers import KeywordResourceSerializer, KeywordStatsSerializer, ReferenceSerializer
 import re
 import math
 
@@ -18,12 +18,13 @@ class KeywordPagination(PageNumberPagination):
     max_page_size = 100
 
 class KeywordResourceListView(generics.ListAPIView):
-    """关键词资源列表视图 - 修改为分组返回"""
+    """关键词资源列表视图 - 分组返回"""
     serializer_class = KeywordResourceSerializer
     permission_classes = [AllowAny]
     
     def get_queryset(self):
-        queryset = KeywordResource.objects.all()
+        # 使用select_related优化查询
+        queryset = KeywordResource.objects.select_related('reference1', 'reference2')
         
         # 搜索关键词
         search = self.request.query_params.get('search')
@@ -43,7 +44,7 @@ class KeywordResourceListView(generics.ListAPIView):
         if target_code:
             queryset = queryset.filter(target_code__icontains=target_code)
         
-        return queryset.select_related().order_by('keyword', 'sdg_number', 'target_code')
+        return queryset.order_by('keyword', 'sdg_number', 'target_code')
 
     def list(self, request, *args, **kwargs):
         """重写list方法，实现分组分页"""
@@ -87,15 +88,27 @@ class KeywordResourceListView(generics.ListAPIView):
                     })
                     seen_combinations.add(combination)
             
+            # 获取reference详情
+            reference1_detail = None
+            reference2_detail = None
+            
+            if representative.reference1:
+                reference1_detail = ReferenceSerializer(representative.reference1).data
+            
+            if representative.reference2:
+                reference2_detail = ReferenceSerializer(representative.reference2).data
+            
             # 创建分组结果对象
             grouped_result = {
                 'id': representative.id,
                 'keyword': representative.keyword,
-                'sdg_number': representative.sdg_number,  # 主要SDG
-                'target_code': representative.target_code,  # 主要target
+                'sdg_number': representative.sdg_number,
+                'target_code': representative.target_code,
                 'target_description': representative.target_description,
-                'reference1': representative.reference1,
-                'reference2': representative.reference2,
+                'reference1': representative.reference1.id if representative.reference1 else None,
+                'reference2': representative.reference2.id if representative.reference2 else None,
+                'reference1_detail': reference1_detail,
+                'reference2_detail': reference2_detail,
                 'note': representative.note,
                 'sdg_title': self.get_sdg_title(representative.sdg_number),
                 'is_liked': False,  # 暂时设为False
@@ -159,10 +172,77 @@ class KeywordResourceListView(generics.ListAPIView):
 
 class KeywordResourceDetailView(generics.RetrieveAPIView):
     """关键词资源详情视图"""
-    queryset = KeywordResource.objects.all()
+    queryset = KeywordResource.objects.select_related('reference1', 'reference2')
     serializer_class = KeywordResourceSerializer
     permission_classes = [AllowAny]
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def keyword_detail(request, keyword):
+    """获取特定关键词的所有相关目标"""
+    # URL解码
+    from urllib.parse import unquote
+    keyword_decoded = unquote(keyword)
+    
+    resources = KeywordResource.objects.filter(
+        keyword__iexact=keyword_decoded
+    ).select_related('reference1', 'reference2').order_by('sdg_number', 'target_code')
+    
+    if not resources.exists():
+        # 尝试模糊匹配
+        resources = KeywordResource.objects.filter(
+            keyword__icontains=keyword_decoded
+        ).select_related('reference1', 'reference2').order_by('sdg_number', 'target_code')[:10]
+    
+    serializer = KeywordResourceSerializer(
+        resources, 
+        many=True, 
+        context={'request': request}
+    )
+    
+    return Response({
+        'keyword': keyword_decoded,
+        'targets': serializer.data,
+        'total_targets': len(serializer.data)
+    })
+
+# Reference相关的视图
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def reference_detail(request, reference_id):
+    """获取reference详情"""
+    try:
+        reference = Reference.objects.get(id=reference_id)
+        serializer = ReferenceSerializer(reference)
+        return Response(serializer.data)
+    except Reference.DoesNotExist:
+        return Response({'error': 'Reference not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def references_list(request):
+    """获取所有references列表"""
+    references = Reference.objects.all().order_by('id')
+    
+    # 分页
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 50))
+    
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    
+    paginated_refs = references[start_idx:end_idx]
+    
+    serializer = ReferenceSerializer(paginated_refs, many=True)
+    
+    return Response({
+        'count': references.count(),
+        'results': serializer.data,
+        'page': page,
+        'page_size': page_size
+    })
+
+# 其他视图保持不变
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def keyword_stats(request):
@@ -231,7 +311,7 @@ def keyword_search(request):
     search_clean = re.sub(r'[^\w\s-]', '', query.lower().strip())
     resources = KeywordResource.objects.filter(
         keyword__icontains=search_clean
-    ).select_related()
+    ).select_related('reference1', 'reference2')
     
     # 按关键词分组
     keyword_groups = defaultdict(list)
@@ -272,36 +352,6 @@ def keyword_search(request):
         'count': total_count,
         'next': f'?q={query}&page={page + 1}&page_size={page_size}' if has_next else None,
         'previous': f'?q={query}&page={page - 1}&page_size={page_size}' if has_previous else None
-    })
-
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def keyword_detail(request, keyword):
-    """获取特定关键词的所有相关目标"""
-    # URL解码
-    from urllib.parse import unquote
-    keyword_decoded = unquote(keyword)
-    
-    resources = KeywordResource.objects.filter(
-        keyword__iexact=keyword_decoded
-    ).select_related().order_by('sdg_number', 'target_code')
-    
-    if not resources.exists():
-        # 尝试模糊匹配
-        resources = KeywordResource.objects.filter(
-            keyword__icontains=keyword_decoded
-        ).select_related().order_by('sdg_number', 'target_code')[:10]
-    
-    serializer = KeywordResourceSerializer(
-        resources, 
-        many=True, 
-        context={'request': request}
-    )
-    
-    return Response({
-        'keyword': keyword_decoded,
-        'targets': serializer.data,
-        'total_targets': len(serializer.data)
     })
 
 @api_view(['GET'])

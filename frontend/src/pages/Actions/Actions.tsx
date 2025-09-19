@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ListHeader } from './components/list/ListHeader';
 import { FilterPanel } from './components/filters/FilterPanel';
 import { ResourceList } from './components/list/ResourceList';
@@ -15,7 +14,6 @@ import { trackSearch } from '../../services/tracker';
 import { trackClick } from '../../services/tracker';
 
 const Actions: React.FC = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { filters, updateFilter, toggleSDG, clearFilters } = useActionsFilters();
   const { currentPage, goToPage, resetPage } = usePagination();
@@ -34,7 +32,6 @@ const Actions: React.FC = () => {
     if (user?.id) {
       trackClick('action', resourceId);
     }
-    navigate(`/Actions/${resourceId}`);
   };
 
   

@@ -2,12 +2,19 @@ import React, { useRef, useEffect } from 'react';
 import { useSearchSuggestions } from '../../hooks/useSearchSuggestions';
 import { AutocompleteSearchBarProps, SearchSuggestion } from '../../types/autocomplete';
 
-/**
- * AutocompleteSearchBar Component
- * A search input with dropdown suggestions based on popular search terms
- * Supports keyboard navigation and click interactions
- */
-export const AutocompleteSearchBar: React.FC<AutocompleteSearchBarProps> = ({
+type StyleVariant = 'default' | 'hero' | 'filter';
+
+interface ExtendedAutocompleteSearchBarProps extends AutocompleteSearchBarProps {
+  variant?: StyleVariant;
+  customStyles?: {
+    container?: string;
+    input?: string;
+    button?: string;
+    dropdown?: string;
+  };
+}
+
+export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps> = ({
   value,
   onChange,
   onSearch,
@@ -15,14 +22,15 @@ export const AutocompleteSearchBar: React.FC<AutocompleteSearchBarProps> = ({
   config = {},
   className = '',
   label,
-  disabled = false
+  disabled = false,
+  variant = 'default',
+  customStyles = {}
 }) => {
-  // Refs for managing focus and dropdown positioning
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const suggestionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // Use our custom hook for suggestions logic
   const {
     suggestions,
     isLoading,
@@ -36,88 +44,101 @@ export const AutocompleteSearchBar: React.FC<AutocompleteSearchBarProps> = ({
     config: mergedConfig
   } = useSearchSuggestions(value, config);
 
-  /**
-   * Handles input change and propagates to parent
-   */
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    onChange(newValue);
-    
-    // Clear any existing errors when user starts typing
-    if (error) {
-      clearError();
+  const styleVariants = {
+    default: {
+      container: 'relative w-full',
+      input: 'w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+      button: 'absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors duration-200',
+      dropdown: 'absolute left-0 right-0 top-full z-50 mt-1 bg-white border border-gray-300 rounded-b-md shadow-lg max-h-64 overflow-y-auto'
+    },
+    hero: {
+      container: 'relative w-full max-w-2xl mx-auto',
+      input: 'w-full px-6 py-4 pr-16 text-lg bg-white/95 backdrop-blur-sm border border-white/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-white/30',
+      button: 'absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors duration-200 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95',
+      dropdown: 'absolute left-0 right-0 top-full z-50 mt-2 bg-white border border-white/30 rounded-xl shadow-2xl max-h-72 overflow-y-auto'
+    },
+    filter: {
+      container: 'relative w-full',
+      input: 'w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm',
+      button: 'absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors duration-200 p-1',
+      dropdown: 'absolute left-0 right-0 top-full z-50 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto'
     }
   };
 
-  /**
-   * Handles form submission
-   */
+  const currentStyles = styleVariants[variant];
+  const finalStyles = {
+    container: customStyles.container || currentStyles.container,
+    input: customStyles.input || currentStyles.input,
+    button: customStyles.button || currentStyles.button,
+    dropdown: customStyles.dropdown || currentStyles.dropdown
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    onChange(newValue);
+    if (error) clearError();
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     closeSuggestions();
     onSearch(value);
   };
 
-  /**
-   * Handles suggestion selection via click
-   */
   const handleSuggestionClick = (suggestion: SearchSuggestion) => {
     onChange(suggestion.term);
     closeSuggestions();
     
-    // Notify parent component about suggestion selection
     if (onSuggestionClick) {
       onSuggestionClick(suggestion);
     } else {
-      // Default behavior: trigger search
       onSearch(suggestion.term);
     }
     
-    // Return focus to input
     inputRef.current?.focus();
   };
 
-  /**
-   * Enhanced keyboard handling that integrates with our hook
-   */
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const selectedSuggestion = handleKeyDown(e);
     
-    // If Enter was pressed with a selected suggestion, use it
     if (selectedSuggestion) {
       handleSuggestionClick(selectedSuggestion);
-    }
-    // If Enter was pressed without selection, submit the form
-    else if (e.key === 'Enter' && selectedIndex === -1) {
+    } else if (e.key === 'Enter' && selectedIndex === -1) {
       handleSubmit(e);
     }
   };
 
-  /**
-   * Handles input blur - close suggestions after a delay to allow for clicks
-   */
-  const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Delay closing to allow suggestion clicks to register
+  const handleInputBlur = () => {
     setTimeout(() => {
-      // Only close if focus hasn't moved to a suggestion
       if (!dropdownRef.current?.contains(document.activeElement)) {
         closeSuggestions();
       }
     }, 150);
   };
 
-  /**
-   * Handles input focus - show suggestions if we have any
-   */
-  const handleInputFocus = () => {
-    if (suggestions.length > 0) {
-      // This will be handled by the hook when user starts typing
+  const adjustDropdownPosition = () => {
+    if (!dropdownRef.current || !containerRef.current || !isOpen) return;
+    
+    const container = containerRef.current;
+    const dropdown = dropdownRef.current;
+    const containerRect = container.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - containerRect.bottom;
+    const dropdownHeight = dropdown.scrollHeight;
+    
+    if (spaceBelow < dropdownHeight && containerRect.top > dropdownHeight) {
+      dropdown.style.top = 'auto';
+      dropdown.style.bottom = '100%';
+      dropdown.style.marginTop = '0';
+      dropdown.style.marginBottom = '4px';
+    } else {
+      dropdown.style.top = '100%';
+      dropdown.style.bottom = 'auto';
+      dropdown.style.marginTop = '4px';
+      dropdown.style.marginBottom = '0';
     }
   };
 
-  /**
-   * Scroll selected suggestion into view
-   */
   useEffect(() => {
     if (selectedIndex >= 0 && suggestionRefs.current[selectedIndex]) {
       suggestionRefs.current[selectedIndex]?.scrollIntoView({
@@ -127,136 +148,114 @@ export const AutocompleteSearchBar: React.FC<AutocompleteSearchBarProps> = ({
     }
   }, [selectedIndex]);
 
-  /**
-   * Update suggestion refs when suggestions change
-   */
   useEffect(() => {
     suggestionRefs.current = suggestionRefs.current.slice(0, suggestions.length);
   }, [suggestions.length]);
 
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(adjustDropdownPosition, 0);
+      
+      const handleResize = () => adjustDropdownPosition();
+      window.addEventListener('resize', handleResize);
+      
+      return () => {
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, [isOpen]);
+
   return (
-    <div className={`relative ${className}`}>
-      {/* Label */}
+    <div className={className}>
       {label && (
         <label className="block text-sm font-medium text-gray-700 mb-2">
           {label}
         </label>
       )}
 
-      {/* Search Form */}
-      <form onSubmit={handleSubmit} className="relative">
-        <input
-          ref={inputRef}
-          type="text"
-          value={value}
-          onChange={handleInputChange}
-          onKeyDown={handleInputKeyDown}
-          onBlur={handleInputBlur}
-          onFocus={handleInputFocus}
-          placeholder={mergedConfig.placeholder}
-          disabled={disabled}
-          className={`
-            w-full px-3 py-2 pr-10 border border-gray-300 rounded-md 
-            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-            transition-all duration-200
-            ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}
-            ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''}
-            ${isOpen ? 'rounded-b-none' : ''}
-          `}
-          aria-expanded={isOpen}
-          aria-haspopup="listbox"
-          aria-autocomplete="list"
-          role="combobox"
-          aria-describedby={error ? 'search-error' : undefined}
-        />
+      <div ref={containerRef} className={finalStyles.container}>
+        <form onSubmit={handleSubmit} className="relative">
+          <input
+            ref={inputRef}
+            type="text"
+            value={value}
+            onChange={handleInputChange}
+            onKeyDown={handleInputKeyDown}
+            onBlur={handleInputBlur}
+            placeholder={mergedConfig.placeholder}
+            disabled={disabled}
+            className={`${finalStyles.input} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''} ${isOpen && variant !== 'hero' ? 'rounded-b-none' : ''}`}
+            aria-expanded={isOpen}
+            aria-haspopup="listbox"
+            aria-autocomplete="list"
+            role="combobox"
+          />
 
-        {/* Search Button */}
-        <button
-          type="submit"
-          disabled={disabled}
-          className={`
-            absolute right-2 top-1/2 transform -translate-y-1/2 
-            text-gray-400 hover:text-blue-600 transition-colors duration-200
-            ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
-          `}
-          aria-label="Search"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M21 21l-4.35-4.35M16.5 10.5a6 6 0 11-12 0 6 6 0 0112 0z" 
-            />
-          </svg>
-        </button>
+          <button
+            type="submit"
+            disabled={disabled}
+            className={`${finalStyles.button} ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+            aria-label="Search"
+          >
+            <svg className={variant === 'hero' ? 'w-6 h-6' : 'w-5 h-5'} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M16.5 10.5a6 6 0 11-12 0 6 6 0 0112 0z" />
+            </svg>
+          </button>
 
-        {/* Loading Indicator */}
-        {isLoading && (
-          <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+          {isLoading && (
+            <div className={`absolute ${variant === 'hero' ? 'right-20 top-1/2 -translate-y-1/2' : 'right-10 top-1/2 -translate-y-1/2'}`}>
+              <div className={`animate-spin rounded-full border-2 border-blue-500 border-t-transparent ${variant === 'hero' ? 'h-5 w-5' : 'h-4 w-4'}`} />
+            </div>
+          )}
+        </form>
+
+        {isOpen && suggestions.length > 0 && (
+          <div
+            ref={dropdownRef}
+            className={finalStyles.dropdown}
+            role="listbox"
+            aria-label="Search suggestions"
+            style={{
+              minWidth: '100%',
+              maxWidth: '100vw'
+            }}
+          >
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={`${suggestion.term}-${index}`}
+                ref={el => suggestionRefs.current[index] = el}
+                type="button"
+                onClick={() => handleSuggestionClick(suggestion)}
+                className={`w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors duration-150 flex items-center justify-between group ${selectedIndex === index ? 'bg-blue-100 text-blue-900' : 'text-gray-900'} ${index === suggestions.length - 1 ? '' : 'border-b border-gray-100'}`}
+                role="option"
+                aria-selected={selectedIndex === index}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M16.5 10.5a6 6 0 11-12 0 6 6 0 0112 0z" />
+                  </svg>
+                  <span className="font-medium truncate">{suggestion.term}</span>
+                </span>
+
+                {mergedConfig.showCount && suggestion.count > 0 && (
+                  <span className={`ml-2 px-2 py-1 text-xs rounded-full transition-colors duration-150 flex-shrink-0 ${selectedIndex === index ? 'bg-blue-200 text-blue-800' : 'bg-gray-100 text-gray-600 group-hover:bg-blue-200 group-hover:text-blue-800'}`}>
+                    {suggestion.count}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
         )}
-      </form>
 
-      {/* Suggestions Dropdown */}
-      {isOpen && (
-        <div
-          ref={dropdownRef}
-          className="absolute z-50 w-full bg-white border border-gray-300 border-t-0 rounded-b-md shadow-lg max-h-64 overflow-y-auto"
-          role="listbox"
-          aria-label="Search suggestions"
-        >
-          {suggestions.map((suggestion, index) => (
-            <button
-              key={`${suggestion.term}-${index}`}
-              ref={el => suggestionRefs.current[index] = el}
-              type="button"
-              onClick={() => handleSuggestionClick(suggestion)}
-              className={`
-                w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors duration-150
-                flex items-center justify-between group
-                ${selectedIndex === index ? 'bg-blue-100 text-blue-900' : 'text-gray-900'}
-                ${index === suggestions.length - 1 ? '' : 'border-b border-gray-100'}
-              `}
-              role="option"
-              aria-selected={selectedIndex === index}
-            >
-              {/* Suggestion Text */}
-              <span className="flex-1 font-medium">
-                {suggestion.term}
-              </span>
-
-              {/* Search Count Badge (if enabled) */}
-              {mergedConfig.showCount && suggestion.count > 0 && (
-                <span className={`
-                  ml-2 px-2 py-1 text-xs rounded-full transition-colors duration-150
-                  ${selectedIndex === index 
-                    ? 'bg-blue-200 text-blue-800' 
-                    : 'bg-gray-100 text-gray-600 group-hover:bg-blue-200 group-hover:text-blue-800'
-                  }
-                `}>
-                  {suggestion.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <div id="search-error" className="mt-2 text-sm text-red-600 flex items-center">
-          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-            <path 
-              fillRule="evenodd" 
-              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" 
-              clipRule="evenodd" 
-            />
-          </svg>
-          {error}
-        </div>
-      )}
+        {error && (
+          <div className="absolute top-full left-0 right-0 mt-1 text-sm text-red-600 flex items-center bg-white border border-red-200 rounded-md p-2 shadow-sm z-50">
+            <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            {error}
+          </div>
+        )}
+      </div>
     </div>
   );
-}; 
+};

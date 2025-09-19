@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BackToHomeButton } from './components/shared/BackToHomeButton';
 import { AuthHeader } from './components/shared/AuthHeader';
 import { UsernameField } from './components/shared/LoginUsernameField';
@@ -13,6 +14,7 @@ import { useLoginForm } from './hooks/useLoginForm';
 import { useGoogleLogin } from './hooks/useGoogleLogin';
 
 const Login: React.FC = () => {
+  const navigate = useNavigate();
   const {
     formData,
     showPassword,
@@ -29,7 +31,7 @@ const Login: React.FC = () => {
   } = useGoogleLogin();
 
   const handleForgotPassword = () => {
-    console.log('Forgot password clicked');
+    navigate('/forgot-password');
   };
 
   return (

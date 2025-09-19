@@ -37,3 +37,32 @@ export interface RegisterErrors {
   non_field_errors?: string[];
   email_code?: string;
 }
+export interface ForgotPasswordFormData {
+  email: string;
+  email_code: string;
+}
+
+export interface ForgotPasswordErrors {
+  email?: string;
+  email_code?: string;
+  general?: string;
+}
+
+export interface ResetPasswordFormData {
+  password: string;
+  password_confirm: string;
+}
+
+export interface ResetPasswordErrors {
+  password?: string;
+  password_confirm?: string;
+  general?: string;
+}
+
+export interface PasswordResetResponse {
+  success: boolean;
+  message?: string;
+  reset_token?: string;
+  email?: string;
+  error?: string;
+}

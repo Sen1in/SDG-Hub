@@ -43,10 +43,10 @@ class ActionListView(generics.ListAPIView):
                 
                 variants = [keyword]
                 
-                if any(quote in keyword for quote in ["'", "'", "'", "´", "`"]):
+                if any(quote in keyword for quote in ["'", "’", "‘", "´", "`"]):
                     base_word = keyword
-                    for old_quote in ["'", "'", "'", "´", "`"]:
-                        for new_quote in ["'", "'", "'", "´", "`"]:
+                    for old_quote in ["'", "’", "‘", "´", "`"]:
+                        for new_quote in ["'", "’", "‘", "´", "`"]:
                             variants.append(base_word.replace(old_quote, new_quote))
                 
                 variants = list(set(variants))
@@ -82,9 +82,17 @@ class ActionListView(generics.ListAPIView):
         # Level Filtering
         level = self.request.query_params.getlist('level')
         if level:
-            level_ints = [int(l) for l in level if l.isdigit()]
-            if level_ints:
-                queryset = queryset.filter(level__in=level_ints)
+            level_query = Q()
+            for level_num in level:
+                if level_num.isdigit():
+                    level_query |= (
+                        Q(level__exact=level_num) |
+                        Q(level__regex=f'^{level_num}\\s*,') |
+                        Q(level__regex=f',\\s*{level_num}\\s*,') |
+                        Q(level__regex=f',\\s*{level_num}$')
+                    )
+            
+            queryset = queryset.filter(level_query)
         
         # individual_organization Filtering
         individual_organization = self.request.query_params.getlist('individual_organization')

@@ -60,7 +60,7 @@ class ActionDb(models.Model):
     actions = models.TextField(db_column='Actions', blank=True, null=True)
     action_detail = models.TextField(db_column='Action detail', blank=True, null=True)
     field_sdgs = models.CharField(db_column=' SDGs', max_length=50, blank=True, null=True)
-    level = models.IntegerField(db_column='Level', blank=True, null=True)
+    level = models.TextField(db_column='Level', blank=True, null=True)
     individual_organization = models.IntegerField(db_column='Individual/Organization', blank=True, null=True)
     location_specific_actions_org_onlyonly_field = models.TextField(
         db_column='Location (specific actions/org onlyonly)', blank=True, null=True
@@ -76,8 +76,7 @@ class ActionDb(models.Model):
     column15 = models.CharField(db_column='Column15', max_length=50, blank=True, null=True)
     award_descriptions = models.TextField(db_column='Award descriptions', blank=True, null=True)
     
-    class Meta:
-        managed = False  
+    class Meta: 
         db_table = 'action_db'
         verbose_name = 'Action Resource'
         verbose_name_plural = 'Action Resources'
@@ -106,12 +105,34 @@ class ActionDb(models.Model):
         return sorted(list(set(sdg_list)))  
     
     @property
+    def level_list(self):
+        """Get the level as a list of integers"""
+        if not self.level:
+            return []
+        
+        level_list = []
+        level_string = str(self.level)
+        level_parts = re.split(r"\'| |\]|\[|,|\.|\;", level_string)
+        
+        for part in level_parts:
+            if part.strip() and part.strip().isdigit():
+                level_num = int(part.strip())
+                if 1 <= level_num <= 6:  # 假设level范围是1-6
+                    level_list.append(level_num)
+        
+        return sorted(list(set(level_list)))
+
+    @property
     def level_label(self):
         """Get the level label"""
-        if self.level:
+        levels = self.level_list
+        if not levels:
+            return ''
+        if len(levels) == 1:
             level_dict = dict(LEVEL_CHOICES)
-            return level_dict.get(self.level, '')
-        return ''
+            return level_dict.get(levels[0], '')
+        else:
+            return f"Levels {', '.join(map(str, levels))}"
     
     @property
     def individual_organization_label(self):
