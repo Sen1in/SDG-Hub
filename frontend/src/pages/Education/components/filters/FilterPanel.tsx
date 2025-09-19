@@ -35,7 +35,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           onSearch();
         }}
         config={{
-          placeholder: "Search resources...",
+          placeholder: "Search education...",
           minInputLength: 2,
           maxSuggestions: 5,
           showCount: true
