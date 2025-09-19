@@ -6,7 +6,12 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from django.contrib.auth.models import User
 from apps.team.models import Team, TeamMembership
+from apps.actions.models import ActionDb
+from apps.education.models import EducationDb
+from apps.notifications.models import Notification
+from datetime import timedelta
 from django.db import transaction
 from weasyprint import HTML, CSS
 from channels.layers import get_channel_layer
@@ -307,7 +312,7 @@ class CollaborativeFormDetailView(generics.RetrieveUpdateAPIView):
         elif form_type == 'action':
             return common_fields + [
                 'actions', 'action_detail', 'level', 'individual_organization',
-                'location_specific', 'related_industry', 'digital_actions',
+                'related_industry', 'digital_actions',
                 'source_descriptions', 'award', 'source_links', 
                 'additional_notes', 'award_descriptions'
             ]
@@ -410,6 +415,23 @@ class CollaborativeFormDetailView(generics.RetrieveUpdateAPIView):
             }
         )
 
+def normalize_sdg_data(sdg_value):
+    """Normalize SDG data to a comma-separated string"""
+    if not sdg_value:
+        return ""
+    
+    if isinstance(sdg_value, str) and sdg_value.startswith('['):
+        try:
+            import json
+            sdg_list = json.loads(sdg_value)
+            if isinstance(sdg_list, list):
+                return ",".join([str(sdg).strip() for sdg in sdg_list])
+        except:
+            pass
+    
+    elif isinstance(sdg_value, list):
+        return ",".join([str(sdg).strip() for sdg in sdg_value])
+
 @api_view(['PATCH'])
 @permission_classes([permissions.IsAuthenticated])
 def collaborative_form_batch_update(request, form_id):
@@ -492,6 +514,8 @@ def collaborative_form_batch_update(request, form_id):
                             field_value = False
                         else:
                             field_value = bool(field_value)
+                elif field_name in ['sdgs_related', 'selected_sdgs']:
+                    field_value = normalize_sdg_data(field_value)
                 
                 setattr(content, field_name, field_value)
                 
@@ -531,7 +555,6 @@ def collaborative_form_batch_update(request, form_id):
             FormEditHistory.objects.bulk_create(history_records)
     
     # Broadcast batch update via WebSocket
-
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         f"form_{form.id}",
@@ -1344,3 +1367,440 @@ def create_risk_slide(prs, content):
     mitigation_content.text = mitigation_text[:200] + "..." if len(mitigation_text) > 200 else mitigation_text
     mitigation_content.font.size = Pt(12)
     mitigation_content.font.color.rgb = RGBColor(255, 254, 251)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def submit_form_for_review(request, form_id):
+    """Submit form for review - Only team owners can submit Action/Education forms"""
+    form = get_object_or_404(Form, id=form_id)
+    
+    # Check if user is team owner
+    membership = TeamMembership.objects.filter(
+        user=request.user,
+        team=form.team,
+        role='owner'
+    ).first()
+    
+    if not membership:
+        return Response(
+            {'error': 'Only team owner can submit forms for review'}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Check if form type is reviewable
+    if form.type not in ['action', 'education']:
+        return Response(
+            {'error': 'Only Action and Education forms can be submitted for review'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if form is already submitted or approved
+    if form.review_status in ['submitted_for_review', 'under_review', 'approved']:
+        return Response(
+            {'error': f'Form is already {form.review_status.replace("_", " ")}'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if form has content
+    try:
+        content = FormContent.objects.get(form=form)
+        if not content.title or not content.description:
+            return Response(
+                {'error': 'Form must have at least title and description to be submitted'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    except FormContent.DoesNotExist:
+        return Response(
+            {'error': 'Form content not found'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Update form status
+    form.review_status = 'submitted_for_review'
+    form.submitted_for_review_at = timezone.now()
+    form.save(update_fields=['review_status', 'submitted_for_review_at'])
+    
+    # Create notifications for all system administrators (users with is_staff=True)
+    admin_users = User.objects.filter(
+        is_staff=True
+    ).exclude(id=request.user.id)
+    
+    notification_data = {
+        'form_id': form.id,
+        'form_title': content.title or form.title,
+        'form_type': form.type,
+        'team_id': form.team.id,
+        'team_name': form.team.name,
+        'submitter_username': request.user.username,
+        'submitter_email': request.user.email,
+        'submitted_at': form.submitted_for_review_at.isoformat(),
+    }
+    
+    # Create notifications for all administrators
+    notifications_created = 0
+    for admin_user in admin_users:
+        Notification.objects.create(
+            recipient=admin_user,
+            notification_type='form_review_request',
+            data=notification_data,
+            expires_at=timezone.now() + timedelta(days=30),
+            status='pending'
+        )
+        notifications_created += 1
+    
+    return Response({
+        'message': 'Form submitted for review successfully',
+        'review_status': form.review_status,
+        'submitted_at': form.submitted_for_review_at,
+        'notifications_sent': notifications_created
+    }, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_forms_for_review(request):
+    """Get all forms pending review for current user (team owners only) - for team owners to see their own team's forms"""
+    # Get teams where user is owner
+    owned_teams = TeamMembership.objects.filter(
+        user=request.user,
+        role='owner'
+    ).values_list('team_id', flat=True)
+    
+    if not owned_teams:
+        return Response({
+            'forms': [],
+            'message': 'You are not a team owner'
+        }, status=status.HTTP_200_OK)
+    
+    # Get forms pending review from owned teams
+    pending_forms = Form.objects.filter(
+        team_id__in=owned_teams,
+        review_status='submitted_for_review',
+        type__in=['action', 'education']
+    ).select_related('created_by', 'team').prefetch_related('content')
+    
+    forms_data = []
+    for form in pending_forms:
+        try:
+            content = form.content
+            forms_data.append({
+                'id': form.id,
+                'title': content.title or form.title,
+                'description': content.description or form.description,
+                'type': form.type,
+                'team_name': form.team.name,
+                'submitted_by': form.created_by.username,
+                'submitted_at': form.submitted_for_review_at,
+                'created_at': form.created_at,
+            })
+        except FormContent.DoesNotExist:
+            continue
+    
+    return Response({
+        'forms': forms_data,
+        'count': len(forms_data)
+    }, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_pending_review_forms(request):
+    """Get all forms pending review for system administrators (is_staff=True users)"""
+    # Check if user is a system administrator (is_staff=True)
+    if not request.user.is_staff:
+        return Response({
+            'forms': [],
+            'message': 'You are not a system administrator'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    # Get all forms pending review
+    pending_forms = Form.objects.filter(
+        review_status='submitted_for_review',
+        type__in=['action', 'education']
+    ).select_related('created_by', 'team').prefetch_related('content')
+    
+    forms_data = []
+    for form in pending_forms:
+        try:
+            content = form.content
+            forms_data.append({
+                'id': form.id,
+                'title': content.title or form.title,
+                'description': content.description or form.description,
+                'type': form.type,
+                'team_name': form.team.name,
+                'team_id': form.team.id,
+                'submitted_by': form.created_by.username,
+                'submitted_at': form.submitted_for_review_at,
+                'created_at': form.created_at,
+            })
+        except FormContent.DoesNotExist:
+            continue
+    
+    return Response({
+        'forms': forms_data,
+        'count': len(forms_data)
+    }, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_form_for_review_detail(request, form_id):
+    """Get detailed form data for review - Only system administrators can review"""
+    form = get_object_or_404(Form, id=form_id)
+    
+    # Check if user is system administrator (is_staff=True)
+    if not request.user.is_staff:
+        return Response(
+            {'error': 'Only system administrators can review forms'}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    if form.review_status not in ['submitted_for_review', 'under_review']:
+        return Response(
+            {'error': 'Form is not available for review'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Get form content first
+    try:
+        content = form.content
+    except FormContent.DoesNotExist:
+        return Response(
+            {'error': 'Form content not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # Mark as under review if not already
+    if form.review_status == 'submitted_for_review':
+        form.review_status = 'under_review'
+        form.save(update_fields=['review_status'])
+
+        team_members = User.objects.filter(
+            team_memberships__team=form.team
+        ).exclude(id=request.user.id)
+        
+        notification_data = {
+            'form_id': form.id,
+            'form_title': content.title or form.title,
+            'form_type': form.type,
+            'team_name': form.team.name,
+            'reviewer_username': request.user.username,
+            'status': 'under_review',
+            'message': f'Your form "{content.title or form.title}" is now under review.'
+        }
+        
+        for member in team_members:
+            Notification.objects.create(
+                recipient=member,
+                notification_type='form_review_status_update',
+                data=notification_data,
+                expires_at=timezone.now() + timedelta(days=7),
+                status='pending'
+            )
+    
+    serializer = FormContentSerializer(content)
+    
+    return Response({
+        'form': {
+            'id': form.id,
+            'title': form.title,
+            'type': form.type,
+            'team_name': form.team.name,
+            'submitted_by': form.created_by.username,
+            'submitted_at': form.submitted_for_review_at,
+            'review_status': form.review_status,
+        },
+        'content': serializer.data
+    }, status=status.HTTP_200_OK)
+        
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def approve_form_review(request, form_id):
+    """Approve form and transfer to main database - Only system administrators can approve"""
+    form = get_object_or_404(Form, id=form_id)
+    
+    # Check if user is system administrator (is_staff=True)
+    if not request.user.is_staff:
+        return Response(
+            {'error': 'Only system administrators can approve forms'}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    if form.review_status not in ['submitted_for_review', 'under_review']:
+        return Response(
+            {'error': 'Form is not available for approval'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        content = form.content
+        comments = request.data.get('comments', '')
+        
+        # Transfer to main database based on form type
+        if form.type == 'action':
+            action_record = ActionDb.objects.create(
+                actions=content.actions or '',
+                action_detail=content.action_detail or '',
+                field_sdgs=content.sdgs_related or '',
+                level=str(content.level) if content.level is not None else '',
+                individual_organization=content.individual_organization,
+                location_specific_actions_org_onlyonly_field=content.location or '',
+                related_industry_org_only_field=content.related_industry or '',
+                digital_actions=1 if content.digital_actions else 0,
+                source_descriptions=content.source_descriptions or '',
+                award=1 if content.award else 0,
+                source_links=content.source_links or '',
+                additional_notes=content.additional_notes or '',
+                award_descriptions=content.award_descriptions or '',
+            )
+            record_id = action_record.id
+            
+        elif form.type == 'education':
+            education_record = EducationDb.objects.create(
+                title=content.title or '',
+                descriptions=content.description or '',
+                aims=content.aims or '',
+                learning_outcome_expecting_outcome_field=content.learning_outcomes or '',
+                type_label=content.type_label or '',
+                location=content.location or '',
+                organization=content.organization or '',
+                year=content.year or '',
+                sdgs_related=content.sdgs_related or '',
+                related_to_which_discipline=content.related_discipline or '',
+                useful_for_which_industries=content.useful_industries or '',
+                source=content.source or '',
+                link=content.link or '',
+            )
+            record_id = education_record.id
+        
+        # Update form status
+        form.review_status = 'approved'
+        form.reviewed_by = request.user
+        form.reviewed_at = timezone.now()
+        form.review_comments = comments
+        form.save(update_fields=['review_status', 'reviewed_by', 'reviewed_at', 'review_comments'])
+        
+        Notification.objects.filter(
+            notification_type='form_review_request',
+            data__form_id=form.id,
+            status='pending'
+        ).update(status='accepted')
+        
+        team_members = User.objects.filter(
+            team_memberships__team=form.team
+        )
+        
+        for member in team_members:
+            Notification.objects.create(
+                recipient=member,
+                notification_type='form_review_completed',
+                data={
+                    'form_id': form.id,
+                    'form_title': content.title or form.title,
+                    'form_type': form.type,
+                    'team_name': form.team.name,
+                    'reviewer_username': request.user.username,
+                    'reviewed_at': form.reviewed_at.isoformat(),
+                    'status': 'approved',
+                    'comments': comments,
+                    'main_db_id': record_id,
+                    'message': f'Great news! Your form "{content.title or form.title}" has been approved and added to the main database.'
+                },
+                expires_at=timezone.now() + timedelta(days=30),
+                status='pending'
+            )
+        
+        return Response({
+            'message': 'Form approved and added to main database successfully',
+            'review_status': form.review_status,
+            'main_db_id': record_id,
+            'reviewed_at': form.reviewed_at
+        }, status=status.HTTP_200_OK)
+        
+    except FormContent.DoesNotExist:
+        return Response(
+            {'error': 'Form content not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to approve form: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def reject_form_review(request, form_id):
+    """Reject form review - Only system administrators can reject"""
+    form = get_object_or_404(Form, id=form_id)
+    
+    # Check if user is system administrator (is_staff=True)
+    if not request.user.is_staff:
+        return Response(
+            {'error': 'Only system administrators can reject forms'}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    if form.review_status not in ['submitted_for_review', 'under_review']:
+        return Response(
+            {'error': 'Form is not available for rejection'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    comments = request.data.get('comments', '')
+    if not comments:
+        return Response(
+            {'error': 'Rejection reason is required'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        content = form.content
+        
+        # Update form status
+        form.review_status = 'rejected'
+        form.reviewed_by = request.user
+        form.reviewed_at = timezone.now()
+        form.review_comments = comments
+        form.save(update_fields=['review_status', 'reviewed_by', 'reviewed_at', 'review_comments'])
+        
+        Notification.objects.filter(
+            notification_type='form_review_request',
+            data__form_id=form.id,
+            status='pending'
+        ).update(status='rejected')
+        
+        team_members = User.objects.filter(
+            team_memberships__team=form.team
+        )
+        
+        for member in team_members:
+            Notification.objects.create(
+                recipient=member,
+                notification_type='form_review_completed',
+                data={
+                    'form_id': form.id,
+                    'form_title': content.title or form.title,
+                    'form_type': form.type,
+                    'team_name': form.team.name,
+                    'reviewer_username': request.user.username,
+                    'reviewed_at': form.reviewed_at.isoformat(),
+                    'status': 'rejected',
+                    'comments': comments,
+                    'message': f'Your form "{content.title or form.title}" needs revision. Please check the feedback and resubmit.'
+                },
+                expires_at=timezone.now() + timedelta(days=30),
+                status='pending'
+            )
+        
+        return Response({
+            'message': 'Form rejected successfully',
+            'review_status': form.review_status,
+            'reviewed_at': form.reviewed_at,
+            'comments': comments
+        }, status=status.HTTP_200_OK)
+        
+    except FormContent.DoesNotExist:
+        return Response(
+            {'error': 'Form content not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )

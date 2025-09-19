@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback  } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCollaborativeForm } from '../hooks/useCollaborativeForm';
 import CollaborativeField from './CollaborativeField';
@@ -7,6 +6,7 @@ import ActiveEditorsPanel from './ActiveEditorsPanel';
 import FormVersionHistory from './FormVersionHistory';
 import { FormType } from '../types/forms';
 import ReadOnlyCollaborativeField from './ReadOnlyCollaborativeField';
+import SubmissionModal from './SubmissionModal';
 import { 
   FormFieldConfig, 
   FormContent, 
@@ -77,15 +77,17 @@ const CollaborativeForm: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit for review');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit for review');
       }
 
-      success('Form submitted for review successfully!');
+      const result = await response.json();
+      success('Form submitted for review successfully! Team administrators will be notified.');
       setShowSubmissionModal(false);
       
     } catch (error) {
       console.error('Submission failed:', error);
-      showError('Failed to submit form for review. Please try again.');
+      showError(error instanceof Error ? error.message : 'Failed to submit form for review. Please try again.');
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -226,7 +228,6 @@ const CollaborativeForm: React.FC = () => {
           type: 'select',
           options: ACTION_OPTIONS.individual_organization
         },
-        { name: 'location_specific', label: 'Location Specific', type: 'textarea', rows: 2 },
         { 
           name: 'related_industry', 
           label: 'Related Industry', 
@@ -338,7 +339,6 @@ const CollaborativeForm: React.FC = () => {
     );
   }
 
-  // 如果没有内容但没有致命错误，继续显示加载状态
   if (!content) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -374,13 +374,11 @@ const CollaborativeForm: React.FC = () => {
                 {content.title || 'Untitled Form'}
               </h1>
               
-              {/* 改进的连接状态显示 */}
               <div className="flex items-center space-x-2">
                 <div className={`w-3 h-3 rounded-full ${statusDisplay.dotColor}`}></div>
                 <span className={`text-sm ${statusDisplay.color} px-2 py-1 rounded-md ${statusDisplay.bgColor}`}>
                   {statusDisplay.text}
                 </span>
-                {/* 如果连接有问题且用户有编辑权限，显示重试按钮 */}
                 {canEdit && (connectionStatus === 'error' || connectionStatus === 'disconnected') && (
                   <button
                     onClick={handleRetryConnection}
@@ -412,13 +410,13 @@ const CollaborativeForm: React.FC = () => {
             </div>
             
             <div className="flex items-center space-x-2">
-              {canEdit && (
+              {canEdit && (content.form_type === 'action' || content.form_type === 'education') && userPermission === 'admin' && (
                 <button
                   onClick={() => setShowSubmissionModal(true)}
-                  disabled={true}
+                  disabled={isSubmitting}
                   className="px-4 py-2 text-sm bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white rounded-lg transition-colors duration-200"
                 >
-                  Submit for Review
+                  {isSubmitting ? 'Submitting...' : 'Submit for Review'}
                 </button>
               )}
               
@@ -644,6 +642,16 @@ const CollaborativeForm: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Submission Modal */}
+        <SubmissionModal
+          isOpen={showSubmissionModal}
+          onClose={() => setShowSubmissionModal(false)}
+          onSubmit={handleSubmitForReview}
+          isLoading={isSubmitting}
+          formTitle={content?.title || 'Untitled Form'}
+          formType={content?.form_type || 'action'}
+        />
       </div>
     </div>
   );

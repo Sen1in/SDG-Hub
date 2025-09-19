@@ -21,4 +21,11 @@ urlpatterns = [
     # Form export
     path('forms/<int:form_id>/export/', views.export_form_pdf, name='export-form-pdf'),
     path('forms/<int:form_id>/export-ppt/', views.export_ida_ppt, name='export_ida_ppt'),
+
+    # Form review endpoints
+    path('forms/<int:form_id>/submit-for-review/', views.submit_form_for_review, name='submit-form-for-review'),
+    path('forms/pending-review/', views.get_forms_for_review, name='get-forms-for-review'),
+    path('forms/<int:form_id>/review-detail/', views.get_form_for_review_detail, name='get-form-for-review-detail'),
+    path('forms/<int:form_id>/approve/', views.approve_form_review, name='approve-form-review'),
+    path('forms/<int:form_id>/reject/', views.reject_form_review, name='reject-form-review'),
 ]

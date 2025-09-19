@@ -24,6 +24,14 @@ class Form(models.Model):
         ('write', 'Write'),
         ('admin', 'Admin'),
     ]
+
+    REVIEW_STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('submitted_for_review', 'Submitted for Review'),
+        ('under_review', 'Under Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
     
     title = models.CharField(max_length=200, db_index=True)
     description = models.TextField(blank=True, null=True)
@@ -53,6 +61,23 @@ class Form(models.Model):
     current_editors = models.JSONField(default=list)
     last_edit_at = models.DateTimeField(auto_now=True)
     edit_version = models.PositiveIntegerField(default=1)
+
+    # Review workflow fields
+    review_status = models.CharField(
+        max_length=25, 
+        choices=REVIEW_STATUS_CHOICES, 
+        default='draft'
+    )
+    submitted_for_review_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='reviewed_forms'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_comments = models.TextField(blank=True)
     
     class Meta:
         indexes = [
@@ -115,7 +140,6 @@ class FormContent(models.Model):
     action_detail = models.TextField(blank=True)
     level = models.IntegerField(null=True, blank=True, default=None)
     individual_organization = models.IntegerField(null=True, blank=True, default=None)
-    location_specific = models.TextField(blank=True)
     related_industry = models.TextField(blank=True)
     digital_actions = models.BooleanField(default=False, null=False)
     source_descriptions = models.TextField(blank=True)
