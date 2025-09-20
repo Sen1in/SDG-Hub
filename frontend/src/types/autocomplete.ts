@@ -2,7 +2,11 @@
 export interface SearchSuggestion {
   term: string;
   count: number;
-  type?: 'popular' | 'recent' | 'keyword';
+  type?: 'popular' | 'recent' | 'keyword' | 'instant' | 'spell';
+  _formatted?: {
+    title?: string;
+    summary?: string;
+  };
 }
 
 // Configuration options for autocomplete behavior

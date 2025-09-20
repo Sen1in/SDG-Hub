@@ -1,9 +1,32 @@
 from rest_framework.decorators import api_view  
 from rest_framework.response import Response
+from django.http import JsonResponse
 from django.db import connection
+from django.conf import settings
 import math
 import re
+import os
+import logging
 from collections import defaultdict
+from functools import lru_cache
+
+logger = logging.getLogger(__name__)
+
+# Import check functions (moved from module level to avoid startup issues)
+def check_meilisearch():
+    try:
+        from meilisearch import Client
+        from meilisearch.errors import MeilisearchError
+        return True, Client, MeilisearchError
+    except ImportError:
+        return False, None, None
+
+def check_symspell():
+    try:
+        from symspellpy import SymSpell, Verbosity
+        return True, SymSpell, Verbosity
+    except ImportError:
+        return False, None, None
 
 @api_view(['GET'])
 def unified_search(request):
@@ -257,3 +280,133 @@ def unified_search(request):
             'total_results': len(results)
         }
     })
+
+
+@api_view(['GET'])
+def instant_search(request):
+    """
+    Instant search endpoint using Meilisearch
+    Returns search results with highlighting for real-time search-as-you-type
+    """
+    # Check Meilisearch availability at runtime
+    available, Client, MeilisearchError = check_meilisearch()
+    if not available:
+        return JsonResponse({
+            'error': 'Meilisearch not available',
+            'hits': [],
+            'processingTimeMs': 0
+        }, status=503)
+    
+    try:
+        query = request.GET.get('q', '').strip()
+        limit = int(request.GET.get('limit', 8))
+        
+        if len(query) < 2:
+            return JsonResponse({
+                'hits': [],
+                'processingTimeMs': 0,
+                'query': query
+            })
+        
+        client = Client(settings.MEILI_HOST, settings.MEILI_KEY)
+        index = client.index(settings.SEARCH_INDEX_NAME)
+        
+        search_result = index.search(query, {
+            "limit": limit,
+            "attributesToHighlight": ["title", "summary"],
+            "highlightPreTag": "<mark>",
+            "highlightPostTag": "</mark>",
+        })
+        
+        return JsonResponse({
+            'hits': search_result['hits'],
+            'processingTimeMs': search_result.get('processingTimeMs', 0),
+            'query': query,
+            'nbHits': search_result.get('nbHits', 0)
+        })
+        
+    except MeilisearchError as e:
+        logger.error(f'Meilisearch error: {e}')
+        return JsonResponse({
+            'error': f'Search error: {str(e)}',
+            'hits': [],
+            'processingTimeMs': 0
+        }, status=500)
+    except Exception as e:
+        logger.error(f'Unexpected search error: {e}')
+        return JsonResponse({
+            'error': 'Internal server error',
+            'hits': [],
+            'processingTimeMs': 0
+        }, status=500)
+
+
+@lru_cache(maxsize=1)
+def _get_symspell():
+    """Create and cache SymSpell instance"""
+    available, SymSpell, Verbosity = check_symspell()
+    if not available:
+        return None
+    
+    try:
+        sym_spell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
+        
+        # Try to load frequency dictionary
+        dict_path = os.path.join(os.path.dirname(__file__), '../../dicts/frequency_dictionary_en_82_765.txt')
+        if os.path.exists(dict_path):
+            sym_spell.load_dictionary(dict_path, term_index=0, count_index=1)
+            logger.info(f"SymSpell dictionary loaded from {dict_path}")
+        else:
+            logger.warning(f"SymSpell dictionary not found at {dict_path}")
+            return None
+            
+        return sym_spell
+    except Exception as e:
+        logger.error(f"Failed to initialize SymSpell: {e}")
+        return None
+
+
+@api_view(['GET'])
+def spell_check(request):
+    """
+    Spell checking endpoint using SymSpell
+    Returns spelling suggestions for misspelled queries
+    """
+    available, SymSpell, Verbosity = check_symspell()
+    if not available:
+        return JsonResponse({
+            'suggestion': None,
+            'error': 'SymSpell not available'
+        }, status=503)
+    
+    try:
+        query = request.GET.get('q', '').strip()
+        
+        if len(query) < 2:
+            return JsonResponse({'suggestion': None})
+        
+        sym_spell = _get_symspell()
+        if not sym_spell:
+            return JsonResponse({
+                'suggestion': None,
+                'error': 'SymSpell not initialized'
+            }, status=503)
+        
+        suggestions = sym_spell.lookup_compound(query, max_edit_distance=2)
+        
+        if suggestions and len(suggestions) > 0:
+            best_suggestion = suggestions[0].term
+            if best_suggestion.lower() != query.lower():
+                return JsonResponse({
+                    'suggestion': best_suggestion,
+                    'original': query
+                })
+        
+        return JsonResponse({'suggestion': None})
+        
+    except Exception as e:
+        logger.error(f'Spell check error: {e}')
+        return JsonResponse({
+            'suggestion': None,
+            'error': 'Spell check failed'
+        }, status=500)

@@ -1,11 +1,14 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useSearchSuggestions } from '../../hooks/useSearchSuggestions';
+import { useInstantSearch } from '../../hooks/useInstantSearch';
+import { useSpellCheck } from '../../hooks/useSpellCheck';
 import { AutocompleteSearchBarProps, SearchSuggestion } from '../../types/autocomplete';
 
 type StyleVariant = 'default' | 'hero' | 'filter';
 
 interface ExtendedAutocompleteSearchBarProps extends AutocompleteSearchBarProps {
   variant?: StyleVariant;
+  enableInstantSearch?: boolean;
   customStyles?: {
     container?: string;
     input?: string;
@@ -24,6 +27,7 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
   label,
   disabled = false,
   variant = 'default',
+  enableInstantSearch = false,
   customStyles = {}
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -31,6 +35,21 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
   const containerRef = useRef<HTMLDivElement>(null);
   const suggestionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+  // Traditional search suggestions
+  const traditionalSearch = useSearchSuggestions(value, config);
+  
+  // Instant search hooks
+  const instantSearch = useInstantSearch(value, 200, 2);
+  const spellCheck = useSpellCheck(300, 2);
+  
+  // State for spell check UI
+  const [showSpellSuggestion, setShowSpellSuggestion] = useState(false);
+  const [spellCheckTimeout, setSpellCheckTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  // Determine which search mode to use
+  const useInstant = enableInstantSearch && variant === 'hero';
+  
+  // Select appropriate search results
   const {
     suggestions,
     isLoading,
@@ -42,7 +61,28 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
     selectSuggestion,
     clearError,
     config: mergedConfig
-  } = useSearchSuggestions(value, config);
+  } = useInstant ? {
+    suggestions: instantSearch.hits.map(hit => ({
+      term: hit.title,
+      count: 0,
+      type: 'instant' as const,
+      _formatted: hit._formatted
+    })),
+    isLoading: instantSearch.loading,
+    isOpen: instantSearch.hits.length > 0 || instantSearch.loading,
+    error: instantSearch.error,
+    selectedIndex: traditionalSearch.selectedIndex,
+    handleKeyDown: traditionalSearch.handleKeyDown,
+    closeSuggestions: () => {
+      setShowSpellSuggestion(false);
+      traditionalSearch.closeSuggestions();
+    },
+    selectSuggestion: traditionalSearch.selectSuggestion,
+    clearError: () => {
+      traditionalSearch.clearError();
+    },
+    config: traditionalSearch.config
+  } : traditionalSearch;
 
   const styleVariants = {
     default: {
@@ -77,6 +117,23 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
     const newValue = e.target.value;
     onChange(newValue);
     if (error) clearError();
+    
+    // Reset spell suggestions when input changes
+    setShowSpellSuggestion(false);
+    if (spellCheckTimeout) {
+      clearTimeout(spellCheckTimeout);
+    }
+    
+    // For instant search, trigger spell check when no results found
+    if (useInstant && newValue.length >= 2) {
+      const timeout = setTimeout(() => {
+        if (instantSearch.hits.length === 0 && !instantSearch.loading) {
+          spellCheck.checkSpelling(newValue);
+          setShowSpellSuggestion(true);
+        }
+      }, 1000);
+      setSpellCheckTimeout(timeout);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -93,6 +150,27 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
       onSuggestionClick(suggestion);
     } else {
       onSearch(suggestion.term);
+    }
+    
+    inputRef.current?.focus();
+  };
+
+
+  const handleSpellSuggestionClick = (suggestion: string) => {
+    onChange(suggestion);
+    setShowSpellSuggestion(false);
+    closeSuggestions();
+    
+    const spellSuggestion: SearchSuggestion = {
+      term: suggestion,
+      count: 0,
+      type: 'spell' as const
+    };
+    
+    if (onSuggestionClick) {
+      onSuggestionClick(spellSuggestion);
+    } else {
+      onSearch(suggestion);
     }
     
     inputRef.current?.focus();
@@ -220,6 +298,20 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
               maxWidth: '100vw'
             }}
           >
+            {useInstant && showSpellSuggestion && suggestions.length === 0 && spellCheck.suggestion && (
+              <div className="px-3 py-2 text-sm text-gray-600 border-b border-gray-100 spell-suggestion">
+                Did you mean: 
+                <button
+                  type="button"
+                  onClick={() => handleSpellSuggestionClick(spellCheck.suggestion!)}
+                  className="ml-1 spell-suggestion-link"
+                >
+                  {spellCheck.suggestion}
+                </button>
+                ?
+              </div>
+            )}
+            
             {suggestions.map((suggestion, index) => (
               <button
                 key={`${suggestion.term}-${index}`}
@@ -234,7 +326,14 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
                   <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M16.5 10.5a6 6 0 11-12 0 6 6 0 0112 0z" />
                   </svg>
-                  <span className="font-medium truncate">{suggestion.term}</span>
+                  {useInstant && suggestion._formatted?.title ? (
+                    <span 
+                      className="font-medium truncate instant-search-highlight" 
+                      dangerouslySetInnerHTML={{ __html: suggestion._formatted.title }}
+                    />
+                  ) : (
+                    <span className="font-medium truncate">{suggestion.term}</span>
+                  )}
                 </span>
 
                 {mergedConfig.showCount && suggestion.count > 0 && (

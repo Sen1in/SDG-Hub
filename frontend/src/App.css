@@ -97,3 +97,53 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-400;
 }
+
+/* Instant Search Highlighting Styles - Matching Home Page Theme */
+.instant-search-highlight mark {
+  @apply px-1 py-0.5 rounded-sm font-medium;
+  background: linear-gradient(120deg, rgba(0, 115, 230, 0.15) 0%, rgba(0, 168, 90, 0.15) 100%);
+  color: #0073E6;
+  border: 1px solid rgba(0, 115, 230, 0.2);
+}
+
+.instant-search-suggestion {
+  @apply hover:bg-blue-50 transition-colors duration-150;
+}
+
+.instant-search-suggestion:hover mark {
+  background: linear-gradient(120deg, rgba(0, 115, 230, 0.25) 0%, rgba(0, 168, 90, 0.25) 100%);
+  color: #005bb5;
+  border: 1px solid rgba(0, 115, 230, 0.3);
+}
+
+.spell-suggestion {
+  @apply bg-blue-50 border-l-4;
+  border-left-color: #0073E6;
+}
+
+.spell-suggestion-link {
+  @apply text-sdg-primary hover:text-blue-700 underline font-medium transition-colors duration-150;
+}
+
+/* Enhanced dropdown styling for better visual separation */
+.autocomplete-dropdown {
+  @apply backdrop-blur-sm;
+  border: 1px solid rgba(0, 115, 230, 0.1);
+  box-shadow: 0 20px 25px -5px rgba(0, 115, 230, 0.1), 
+              0 10px 10px -5px rgba(0, 115, 230, 0.04),
+              0 0 0 1px rgba(0, 115, 230, 0.05);
+}
+
+.autocomplete-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid rgba(255, 255, 255, 0.95);
+  filter: drop-shadow(0 -2px 4px rgba(0, 115, 230, 0.1));
+}
