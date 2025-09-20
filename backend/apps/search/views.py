@@ -349,6 +349,7 @@ def instant_search(request):
     try:
         query = request.GET.get('q', '').strip()
         limit = int(request.GET.get('limit', 8))
+        type_filter = request.GET.get('type', '').strip()
         
         if len(query) < 2:
             return JsonResponse({
@@ -365,13 +366,20 @@ def instant_search(request):
         # Use has_award as primary sort to ensure awarded items come first
         sort_fields = ["has_award:desc", "awards_count:desc", "year:desc", "title:asc"]
         
-        search_result = index.search(query, {
+        # Build search parameters
+        search_params = {
             "limit": limit,
             "attributesToHighlight": ["title", "summary"],
             "highlightPreTag": "<mark>",
             "highlightPostTag": "</mark>",
             "sort": sort_fields
-        })
+        }
+        
+        # Add type filter if specified
+        if type_filter and type_filter in ['education', 'action', 'keyword']:
+            search_params["filter"] = f"type = {type_filter}"
+        
+        search_result = index.search(query, search_params)
         
         return JsonResponse({
             'hits': search_result['hits'],

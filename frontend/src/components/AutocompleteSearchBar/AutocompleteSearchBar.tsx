@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useSearchSuggestions } from '../../hooks/useSearchSuggestions';
 import { useInstantSearch } from '../../hooks/useInstantSearch';
+import { useInstantActionsSearch } from '../../hooks/useInstantActionsSearch';
+import { useInstantEducationSearch } from '../../hooks/useInstantEducationSearch';
 import { useSpellCheck } from '../../hooks/useSpellCheck';
 import { AutocompleteSearchBarProps, SearchSuggestion } from '../../types/autocomplete';
 
@@ -15,6 +17,7 @@ interface ExtendedAutocompleteSearchBarProps extends AutocompleteSearchBarProps 
     dropdown?: string;
   };
   enableInstantSearch?: boolean; // Enable instant search mode
+  instantSearchType?: 'all' | 'action' | 'education'; // Type of instant search
 }
 
 export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps> = ({
@@ -28,7 +31,8 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
   disabled = false,
   variant = 'default',
   customStyles = {},
-  enableInstantSearch = false
+  enableInstantSearch = false,
+  instantSearchType = 'all'
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -38,18 +42,37 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
   // State for managing instant search vs traditional suggestions
   const [showSpellSuggestion, setShowSpellSuggestion] = useState(false);
   const [spellCheckTimeout, setSpellCheckTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [instantSelectedIndex, setInstantSelectedIndex] = useState(-1);
+  const [forceClosedInstant, setForceClosedInstant] = useState(false);
 
   // Traditional search suggestions hook
   const traditionalSearch = useSearchSuggestions(value, config);
 
-  // Instant search hook (only used when enabled)
-  const instantSearch = useInstantSearch(value, 200, 2);
+  // Instant search hooks (only used when enabled)
+  const instantSearchAll = useInstantSearch(value, 200, 2);
+  const instantSearchActions = useInstantActionsSearch(value, 200, 2);
+  const instantSearchEducation = useInstantEducationSearch(value, 200, 2);
 
   // Spell check hook
   const spellCheck = useSpellCheck(300, 2);
 
   // Choose which search method to use
-  const useInstant = enableInstantSearch && variant === 'hero';
+  const useInstant = enableInstantSearch && (variant === 'hero' || variant === 'filter');
+  
+  // Select the appropriate instant search hook based on type
+  const getInstantSearch = () => {
+    switch (instantSearchType) {
+      case 'action':
+        return instantSearchActions;
+      case 'education':
+        return instantSearchEducation;
+      case 'all':
+      default:
+        return instantSearchAll;
+    }
+  };
+  
+  const instantSearch = getInstantSearch();
   
   const {
     suggestions,
@@ -70,11 +93,15 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
       _formatted: hit._formatted
     })),
     isLoading: instantSearch.loading,
-    isOpen: instantSearch.hits.length > 0 && value.length >= 2,
+    isOpen: !forceClosedInstant && instantSearch.hits.length > 0 && value.length >= 2,
     error: instantSearch.error,
-    selectedIndex: traditionalSearch.selectedIndex,
-    handleKeyDown: traditionalSearch.handleKeyDown,
-    closeSuggestions: traditionalSearch.closeSuggestions,
+    selectedIndex: instantSelectedIndex,
+    handleKeyDown: () => null, // Custom handling in handleInputKeyDown
+    closeSuggestions: () => {
+      setInstantSelectedIndex(-1);
+      setForceClosedInstant(true);
+      traditionalSearch.closeSuggestions();
+    },
     selectSuggestion: traditionalSearch.selectSuggestion,
     clearError: traditionalSearch.clearError,
     config: traditionalSearch.config
@@ -97,7 +124,7 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
       container: 'relative w-full',
       input: 'w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm',
       button: 'absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors duration-200 p-1',
-      dropdown: 'absolute left-0 right-0 top-full z-50 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto'
+      dropdown: 'absolute left-0 top-full z-50 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto min-w-full w-max'
     }
   };
 
@@ -116,6 +143,12 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
     
     // Reset spell suggestion when typing
     setShowSpellSuggestion(false);
+    
+    // Reset instant search selection when typing
+    if (useInstant) {
+      setInstantSelectedIndex(-1);
+      setForceClosedInstant(false); // Allow dropdown to show again when typing
+    }
     
     // Clear previous spell check timeout
     if (spellCheckTimeout) {
@@ -139,6 +172,7 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     closeSuggestions();
+    setInstantSelectedIndex(-1); // Reset selection
     onSearch(value);
   };
 
@@ -178,12 +212,36 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const selectedSuggestion = handleKeyDown(e);
-    
-    if (selectedSuggestion) {
-      handleSuggestionClick(selectedSuggestion);
-    } else if (e.key === 'Enter' && selectedIndex === -1) {
-      handleSubmit(e);
+    if (useInstant) {
+      // Custom keyboard handling for instant search
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const newIndex = instantSelectedIndex < suggestions.length - 1 ? instantSelectedIndex + 1 : -1;
+        setInstantSelectedIndex(newIndex);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const newIndex = instantSelectedIndex > -1 ? instantSelectedIndex - 1 : suggestions.length - 1;
+        setInstantSelectedIndex(newIndex);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (instantSelectedIndex >= 0 && instantSelectedIndex < suggestions.length && suggestions[instantSelectedIndex]) {
+          handleSuggestionClick(suggestions[instantSelectedIndex]);
+        } else {
+          handleSubmit(e);
+        }
+      } else if (e.key === 'Escape') {
+        closeSuggestions();
+        setInstantSelectedIndex(-1);
+      }
+    } else {
+      // Traditional search handling
+      const selectedSuggestion = handleKeyDown(e);
+      
+      if (selectedSuggestion) {
+        handleSuggestionClick(selectedSuggestion);
+      } else if (e.key === 'Enter' && selectedIndex === -1) {
+        handleSubmit(e);
+      }
     }
   };
 
@@ -330,8 +388,9 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
             role="listbox"
             aria-label="Search suggestions"
             style={{
-              minWidth: '100%',
-              maxWidth: '100vw'
+              minWidth: variant === 'filter' ? '100%' : '100%',
+              maxWidth: variant === 'filter' ? 'none' : '100vw',
+              width: variant === 'filter' ? 'max-content' : 'auto'
             }}
           >
             {suggestions.map((suggestion, index) => (
@@ -340,27 +399,27 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
                 ref={el => suggestionRefs.current[index] = el}
                 type="button"
                 onClick={() => handleSuggestionClick(suggestion)}
-                className={`w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors duration-150 flex items-center justify-between group ${selectedIndex === index ? 'bg-blue-100 text-blue-900' : 'text-gray-900'} ${index === suggestions.length - 1 ? '' : 'border-b border-gray-100'}`}
+                className={`w-full ${variant === 'filter' ? 'px-3 py-1.5' : 'px-3 py-2'} text-left hover:bg-blue-50 transition-colors duration-150 flex items-center justify-between group ${selectedIndex === index ? 'bg-blue-100 text-blue-900' : 'text-gray-900'} ${index === suggestions.length - 1 ? '' : 'border-b border-gray-100'}`}
                 role="option"
                 aria-selected={selectedIndex === index}
               >
                 <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`${variant === 'filter' ? 'w-3.5 h-3.5' : 'w-4 h-4'} text-gray-400 flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M16.5 10.5a6 6 0 11-12 0 6 6 0 0112 0z" />
                   </svg>
                   {/* Render with highlighting if available */}
                   {useInstant && suggestion._formatted?.title ? (
                     <span 
-                      className="font-medium truncate instant-search-highlight"
+                      className={`${variant === 'filter' ? 'text-sm font-medium' : 'font-medium'} ${variant === 'filter' ? 'whitespace-nowrap' : 'truncate'} instant-search-highlight`}
                       dangerouslySetInnerHTML={{ __html: suggestion._formatted.title }}
                     />
                   ) : (
-                    <span className="font-medium truncate">{suggestion.term}</span>
+                    <span className={`${variant === 'filter' ? 'text-sm font-medium' : 'font-medium'} ${variant === 'filter' ? 'whitespace-nowrap' : 'truncate'}`}>{suggestion.term}</span>
                   )}
                 </span>
 
                 {mergedConfig.showCount && suggestion.count > 0 && (
-                  <span className={`ml-2 px-2 py-1 text-xs rounded-full transition-colors duration-150 flex-shrink-0 ${selectedIndex === index ? 'bg-blue-200 text-blue-800' : 'bg-gray-100 text-gray-600 group-hover:bg-blue-200 group-hover:text-blue-800'}`}>
+                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full transition-colors duration-150 flex-shrink-0 ${selectedIndex === index ? 'bg-blue-200 text-blue-800' : 'bg-gray-100 text-gray-600 group-hover:bg-blue-200 group-hover:text-blue-800'}`}>
                     {suggestion.count}
                   </span>
                 )}
