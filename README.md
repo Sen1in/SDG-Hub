@@ -38,10 +38,11 @@ Before starting the deployment, ensure you have the following software installed
 - **Node.js 14+** - [Download from nodejs.org](https://nodejs.org)
 - **MySQL 8.0+** - [Download from mysql.com](https://mysql.com)
 - **Redis** - [Download from redis.io](https://redis.io)
+- **Docker** - Required for Meilisearch search engine
 
 ### Optional Tools
 - **Git** - For version control
-- **Docker** - Alternative for running Redis
+- **Meilisearch** - Can be installed directly instead of using Docker
 
 ## Project Structure
 

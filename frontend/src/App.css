@@ -49,6 +49,51 @@
   .sdg-gradient {
     background: linear-gradient(135deg, #0073E6 0%, #00A85A 100%);
   }
+
+  /* Instant Search Highlighting Styles */
+  .instant-search-highlight mark {
+    @apply bg-yellow-200 text-yellow-900 px-1 py-0.5 rounded-sm font-medium;
+    background-color: rgba(251, 191, 36, 0.3);
+  }
+
+  .instant-search-suggestion {
+    @apply hover:bg-blue-50 transition-colors duration-150;
+  }
+
+  .instant-search-suggestion:hover mark {
+    @apply bg-blue-200 text-blue-900;
+  }
+
+  .spell-suggestion {
+    @apply bg-yellow-50 border-l-4 border-yellow-400;
+  }
+
+  .spell-suggestion-link {
+    @apply text-blue-600 hover:text-blue-800 underline font-medium transition-colors duration-150;
+  }
+
+  /* Enhanced dropdown styling for better visual separation */
+  .autocomplete-dropdown {
+    @apply backdrop-blur-sm;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+                0 10px 10px -5px rgba(0, 0, 0, 0.04),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  .autocomplete-dropdown::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid rgba(255, 255, 255, 0.95);
+    filter: drop-shadow(0 -2px 4px rgba(0, 0, 0, 0.1));
+  }
 }
 
 /* Tool-style design */

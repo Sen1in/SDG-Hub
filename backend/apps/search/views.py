@@ -1,9 +1,30 @@
 from rest_framework.decorators import api_view  
 from rest_framework.response import Response
 from django.db import connection
+from django.conf import settings
+from django.http import JsonResponse
+from functools import lru_cache
 import math
 import re
+import logging
 from collections import defaultdict
+
+# Meilisearch and SymSpell imports
+try:
+    from meilisearch import Client
+    from meilisearch.errors import MeilisearchError
+    MEILISEARCH_AVAILABLE = True
+except ImportError:
+    MEILISEARCH_AVAILABLE = False
+
+try:
+    from symspellpy import SymSpell, Verbosity
+    import os
+    SYMSPELL_AVAILABLE = True
+except ImportError:
+    SYMSPELL_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 @api_view(['GET'])
 def unified_search(request):
@@ -257,3 +278,141 @@ def unified_search(request):
             'total_results': len(results)
         }
     })
+
+
+# =============================================================================
+# NEW INSTANT SEARCH ENDPOINTS FOR MEILISEARCH + SYMSPELL
+# =============================================================================
+
+@api_view(['GET'])
+def instant_search(request):
+    """
+    Instant search endpoint using Meilisearch
+    Returns search results with highlighting for real-time search-as-you-type
+    """
+    if not MEILISEARCH_AVAILABLE:
+        return JsonResponse({
+            'error': 'Meilisearch not available',
+            'hits': [],
+            'processingTimeMs': 0
+        }, status=503)
+    
+    try:
+        query = request.GET.get('q', '').strip()
+        limit = int(request.GET.get('limit', 8))
+        
+        if len(query) < 2:
+            return JsonResponse({
+                'hits': [],
+                'processingTimeMs': 0,
+                'query': query
+            })
+        
+        # Initialize Meilisearch client
+        client = Client(settings.MEILI_HOST, settings.MEILI_KEY)
+        index = client.index(settings.SEARCH_INDEX_NAME)
+        
+        # Perform search with highlighting
+        search_result = index.search(query, {
+            "limit": limit,
+            "attributesToHighlight": ["title", "summary"],
+            "highlightPreTag": "<mark>",
+            "highlightPostTag": "</mark>",
+        })
+        
+        return JsonResponse({
+            'hits': search_result['hits'],
+            'processingTimeMs': search_result.get('processingTimeMs', 0),
+            'query': query,
+            'nbHits': search_result.get('nbHits', 0)
+        })
+        
+    except MeilisearchError as e:
+        logger.error(f'Meilisearch error: {e}')
+        return JsonResponse({
+            'error': f'Search error: {str(e)}',
+            'hits': [],
+            'processingTimeMs': 0
+        }, status=500)
+    except Exception as e:
+        logger.error(f'Unexpected search error: {e}')
+        return JsonResponse({
+            'error': 'Internal server error',
+            'hits': [],
+            'processingTimeMs': 0
+        }, status=500)
+
+
+@lru_cache(maxsize=1)
+def _get_symspell():
+    """
+    Initialize and cache SymSpell instance
+    """
+    if not SYMSPELL_AVAILABLE:
+        return None
+        
+    try:
+        sym_spell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
+        dictionary_path = os.path.join(
+            settings.BASE_DIR, 
+            'dicts', 
+            'frequency_dictionary_en_82_765.txt'
+        )
+        
+        if os.path.exists(dictionary_path):
+            sym_spell.load_dictionary(dictionary_path, term_index=0, count_index=1)
+            logger.info(f'SymSpell dictionary loaded from {dictionary_path}')
+            return sym_spell
+        else:
+            logger.warning(f'SymSpell dictionary not found at {dictionary_path}')
+            return None
+    except Exception as e:
+        logger.error(f'Failed to initialize SymSpell: {e}')
+        return None
+
+
+@api_view(['GET'])
+def spell_check(request):
+    """
+    Spell checking endpoint using SymSpell
+    Returns spelling suggestions for misspelled queries
+    """
+    if not SYMSPELL_AVAILABLE:
+        return JsonResponse({
+            'suggestion': None,
+            'error': 'SymSpell not available'
+        }, status=503)
+    
+    try:
+        query = request.GET.get('q', '').strip()
+        
+        if len(query) < 2:
+            return JsonResponse({'suggestion': None})
+        
+        sym_spell = _get_symspell()
+        if not sym_spell:
+            return JsonResponse({
+                'suggestion': None,
+                'error': 'SymSpell not initialized'
+            }, status=503)
+        
+        # Use lookup_compound for better phrase correction
+        suggestions = sym_spell.lookup_compound(query, max_edit_distance=2)
+        
+        if suggestions and len(suggestions) > 0:
+            best_suggestion = suggestions[0].term
+            # Only return suggestion if it's different from the original query
+            if best_suggestion.lower() != query.lower():
+                return JsonResponse({
+                    'suggestion': best_suggestion,
+                    'original': query
+                })
+        
+        return JsonResponse({'suggestion': None})
+        
+    except Exception as e:
+        logger.error(f'Spell check error: {e}')
+        return JsonResponse({
+            'suggestion': None,
+            'error': 'Spell check failed'
+        }, status=500)
