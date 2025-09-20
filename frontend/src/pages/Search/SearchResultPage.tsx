@@ -28,7 +28,7 @@ const SearchResultPage: React.FC = () => {
   const [availableLocations, setAvailableLocations] = React.useState<string[]>([]);
 
 
-  const [sort, setSort] = React.useState('relevance');
+  const [sort, setSort] = React.useState('unified_ranking');
   const { results, loading, totalPages, total, error } = useSearchData(
     query,
     currentPage,

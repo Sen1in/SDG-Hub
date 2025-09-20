@@ -1,9 +1,30 @@
 from rest_framework.decorators import api_view  
 from rest_framework.response import Response
 from django.db import connection
+from django.conf import settings
+from django.http import JsonResponse
+from functools import lru_cache
 import math
 import re
+import logging
 from collections import defaultdict
+
+# Meilisearch and SymSpell imports
+try:
+    from meilisearch import Client
+    from meilisearch.errors import MeilisearchError
+    MEILISEARCH_AVAILABLE = True
+except ImportError:
+    MEILISEARCH_AVAILABLE = False
+
+try:
+    from symspellpy import SymSpell, Verbosity
+    import os
+    SYMSPELL_AVAILABLE = True
+except ImportError:
+    SYMSPELL_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 @api_view(['GET'])
 def unified_search(request):
@@ -49,10 +70,25 @@ def unified_search(request):
                 ELSE (LENGTH(sdgs) - LENGTH(REPLACE(sdgs, ',', '')) + 1)
             END DESC
         """
+    elif sort == "unified_ranking":
+        # Unified ranking: has_award DESC → year DESC → title ASC
+        sort_clause = """
+            ORDER BY 
+            has_award DESC,
+            year DESC,
+            LOWER(TRIM(title)) ASC
+        """
     else:
-        sort_clause = "ORDER BY relevance DESC, LOWER(TRIM(title)) ASC"
+        # Default: Use unified ranking with relevance fallback
+        sort_clause = """
+            ORDER BY 
+            has_award DESC,
+            year DESC,
+            relevance DESC,
+            LOWER(TRIM(title)) ASC
+        """
 
-    # Fixed query to correctly handle keyword merging
+    # Fixed query to correctly handle keyword merging and add unified ranking fields
     raw_query = f"""
         SELECT * FROM (
             SELECT
@@ -60,11 +96,20 @@ def unified_search(request):
                 Title COLLATE utf8mb4_unicode_ci AS title,
                 descriptions COLLATE utf8mb4_unicode_ci AS description,
                 Organization COLLATE utf8mb4_unicode_ci AS organization,
-                Year AS year,
+                COALESCE(
+                    CASE 
+                        WHEN Year IS NOT NULL AND Year != '' AND Year REGEXP '^[0-9]+$' 
+                        THEN CAST(Year AS UNSIGNED)
+                        WHEN Year IS NOT NULL AND Year != '' 
+                        THEN CAST(SUBSTRING(Year, 1, 4) AS UNSIGNED)
+                        ELSE 0 
+                    END, 0
+                ) AS year,
                 Link COLLATE utf8mb4_unicode_ci AS link,
                 `SDGs related` COLLATE utf8mb4_unicode_ci AS sdgs,
                 Location COLLATE utf8mb4_unicode_ci AS location,
                 'education' AS source,
+                0 AS has_award,
                 MATCH(Title, descriptions) AGAINST (%s IN NATURAL LANGUAGE MODE) AS relevance
             FROM education_db
             WHERE MATCH(Title, descriptions) AGAINST (%s IN NATURAL LANGUAGE MODE)
@@ -80,11 +125,12 @@ def unified_search(request):
                     WHEN `Individual/Organization` = 1 THEN 'organization'
                     ELSE ''
                 END COLLATE utf8mb4_unicode_ci AS organization,
-                '' AS year,
+                0 AS year,
                 `Source Links` COLLATE utf8mb4_unicode_ci AS link,
                 ` SDGs` COLLATE utf8mb4_unicode_ci AS sdgs,
                 `Location (specific actions/org onlyonly)` COLLATE utf8mb4_unicode_ci AS location,
                 'actions' AS source,
+                CASE WHEN Award IS NOT NULL AND Award > 0 THEN 1 ELSE 0 END AS has_award,
                 MATCH(Actions, `Action detail`) AGAINST (%s IN NATURAL LANGUAGE MODE) AS relevance
             FROM action_db
             WHERE MATCH(Actions, `Action detail`) AGAINST (%s IN NATURAL LANGUAGE MODE)
@@ -96,11 +142,12 @@ def unified_search(request):
                 keyword COLLATE utf8mb4_unicode_ci AS title,
                 GROUP_CONCAT(DISTINCT reference1 ORDER BY reference1 SEPARATOR ' | ') COLLATE utf8mb4_unicode_ci AS description,
                 GROUP_CONCAT(DISTINCT CASE WHEN target_code IS NOT NULL AND target_code != '' THEN target_code END ORDER BY CAST(SUBSTRING_INDEX(target_code, '.', 1) AS UNSIGNED), CAST(SUBSTRING_INDEX(target_code, '.', -1) AS UNSIGNED) SEPARATOR ', ') COLLATE utf8mb4_unicode_ci AS organization,
-                '' AS year,
+                0 AS year,
                 '' AS link,
                 GROUP_CONCAT(DISTINCT CASE WHEN sdg_number IS NOT NULL AND sdg_number != '' THEN sdg_number END ORDER BY CAST(sdg_number AS UNSIGNED) SEPARATOR ', ') COLLATE utf8mb4_unicode_ci AS sdgs,
                 '' AS location,
                 'keywords' AS source,
+                0 AS has_award,
                 MAX(MATCH(keyword) AGAINST (%s IN NATURAL LANGUAGE MODE)) AS relevance
             FROM keyword_resources
             WHERE MATCH(keyword) AGAINST (%s IN NATURAL LANGUAGE MODE)
@@ -119,7 +166,8 @@ def unified_search(request):
                 Title COLLATE utf8mb4_unicode_ci AS title,
                 `SDGs related` COLLATE utf8mb4_unicode_ci AS sdgs,
                 Location COLLATE utf8mb4_unicode_ci AS location,
-                'education' AS source
+                'education' AS source,
+                0 AS has_award
             FROM education_db
             {"WHERE MATCH(Title, descriptions) AGAINST (%s IN NATURAL LANGUAGE MODE)" if query else ""}
 
@@ -130,7 +178,8 @@ def unified_search(request):
                 Actions COLLATE utf8mb4_unicode_ci AS title,
                 ` SDGs` COLLATE utf8mb4_unicode_ci AS sdgs,
                 `Location (specific actions/org onlyonly)` COLLATE utf8mb4_unicode_ci AS location,
-                'actions' AS source
+                'actions' AS source,
+                CASE WHEN Award IS NOT NULL AND Award > 0 THEN 1 ELSE 0 END AS has_award
             FROM action_db
             {"WHERE MATCH(Actions, `Action detail`) AGAINST (%s IN NATURAL LANGUAGE MODE)" if query else ""}
 
@@ -141,7 +190,8 @@ def unified_search(request):
                 keyword COLLATE utf8mb4_unicode_ci AS title,
                 GROUP_CONCAT(DISTINCT CASE WHEN sdg_number IS NOT NULL AND sdg_number != '' THEN sdg_number END ORDER BY CAST(sdg_number AS UNSIGNED) SEPARATOR ', ') COLLATE utf8mb4_unicode_ci AS sdgs,
                 '' AS location,
-                'keywords' AS source
+                'keywords' AS source,
+                0 AS has_award
             FROM keyword_resources
             {"WHERE MATCH(keyword) AGAINST (%s IN NATURAL LANGUAGE MODE)" if query else ""}
             GROUP BY keyword
@@ -149,16 +199,33 @@ def unified_search(request):
         {where_clause}
     """
 
-    main_params = [query] * 6 if query else [''] * 6
-    count_params = [query] * 3 if query else [''] * 3
-
+    # Parameters for main query: 6 search params + filter_params + size + offset
+    main_params = []
+    if query:
+        main_params = [query] * 6  # 2 for education, 2 for actions, 2 for keywords
+    else:
+        main_params = [''] * 6
     main_params += filter_params + [size, offset]
+    
+    # Parameters for count query: 3 search params + filter_params
+    count_params = []
+    if query:
+        count_params = [query] * 3  # 1 for education, 1 for actions, 1 for keywords
+    else:
+        count_params = [''] * 3
     count_params += filter_params
+    
+    # Parameter setup complete for unified ranking query
 
     with connection.cursor() as cursor:
-        cursor.execute(raw_query, main_params)
-        columns = [col[0] for col in cursor.description]
-        raw_results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        try:
+            cursor.execute(raw_query, main_params)
+            columns = [col[0] for col in cursor.description]
+            raw_results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Unified search query execution failed: {e}")
+            # Return empty results on error
+            raw_results = []
 
         # Process SDG data according to correct field mapping
         for r in raw_results:
@@ -242,6 +309,9 @@ def unified_search(request):
 
     results = raw_results
 
+    # Ensure has_award field is properly included in results
+    # (Debug code removed after successful implementation)
+
     with connection.cursor() as cursor:
         cursor.execute(count_query, count_params)
         total = cursor.fetchone()[0]
@@ -257,3 +327,153 @@ def unified_search(request):
             'total_results': len(results)
         }
     })
+
+
+# =============================================================================
+# NEW INSTANT SEARCH ENDPOINTS FOR MEILISEARCH + SYMSPELL
+# =============================================================================
+
+@api_view(['GET'])
+def instant_search(request):
+    """
+    Instant search endpoint using Meilisearch
+    Returns search results with highlighting for real-time search-as-you-type
+    """
+    if not MEILISEARCH_AVAILABLE:
+        return JsonResponse({
+            'error': 'Meilisearch not available',
+            'hits': [],
+            'processingTimeMs': 0
+        }, status=503)
+    
+    try:
+        query = request.GET.get('q', '').strip()
+        limit = int(request.GET.get('limit', 8))
+        type_filter = request.GET.get('type', '').strip()
+        
+        if len(query) < 2:
+            return JsonResponse({
+                'hits': [],
+                'processingTimeMs': 0,
+                'query': query
+            })
+        
+        # Initialize Meilisearch client
+        client = Client(settings.MEILI_HOST, settings.MEILI_KEY)
+        index = client.index(settings.SEARCH_INDEX_NAME)
+        
+        # Perform search with highlighting and unified ranking
+        # Use has_award as primary sort to ensure awarded items come first
+        sort_fields = ["has_award:desc", "awards_count:desc", "year:desc", "title:asc"]
+        
+        # Build search parameters
+        search_params = {
+            "limit": limit,
+            "attributesToHighlight": ["title", "summary"],
+            "highlightPreTag": "<mark>",
+            "highlightPostTag": "</mark>",
+            "sort": sort_fields
+        }
+        
+        # Add type filter if specified
+        if type_filter and type_filter in ['education', 'action', 'keyword']:
+            search_params["filter"] = f"type = {type_filter}"
+        
+        search_result = index.search(query, search_params)
+        
+        return JsonResponse({
+            'hits': search_result['hits'],
+            'processingTimeMs': search_result.get('processingTimeMs', 0),
+            'query': query,
+            'nbHits': search_result.get('nbHits', 0)
+        })
+        
+    except MeilisearchError as e:
+        logger.error(f'Meilisearch error: {e}')
+        return JsonResponse({
+            'error': f'Search error: {str(e)}',
+            'hits': [],
+            'processingTimeMs': 0
+        }, status=500)
+    except Exception as e:
+        logger.error(f'Unexpected search error: {e}')
+        return JsonResponse({
+            'error': 'Internal server error',
+            'hits': [],
+            'processingTimeMs': 0
+        }, status=500)
+
+
+@lru_cache(maxsize=1)
+def _get_symspell():
+    """
+    Initialize and cache SymSpell instance
+    """
+    if not SYMSPELL_AVAILABLE:
+        return None
+        
+    try:
+        sym_spell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
+        dictionary_path = os.path.join(
+            settings.BASE_DIR, 
+            'dicts', 
+            'frequency_dictionary_en_82_765.txt'
+        )
+        
+        if os.path.exists(dictionary_path):
+            sym_spell.load_dictionary(dictionary_path, term_index=0, count_index=1)
+            logger.info(f'SymSpell dictionary loaded from {dictionary_path}')
+            return sym_spell
+        else:
+            logger.warning(f'SymSpell dictionary not found at {dictionary_path}')
+            return None
+    except Exception as e:
+        logger.error(f'Failed to initialize SymSpell: {e}')
+        return None
+
+
+@api_view(['GET'])
+def spell_check(request):
+    """
+    Spell checking endpoint using SymSpell
+    Returns spelling suggestions for misspelled queries
+    """
+    if not SYMSPELL_AVAILABLE:
+        return JsonResponse({
+            'suggestion': None,
+            'error': 'SymSpell not available'
+        }, status=503)
+    
+    try:
+        query = request.GET.get('q', '').strip()
+        
+        if len(query) < 2:
+            return JsonResponse({'suggestion': None})
+        
+        sym_spell = _get_symspell()
+        if not sym_spell:
+            return JsonResponse({
+                'suggestion': None,
+                'error': 'SymSpell not initialized'
+            }, status=503)
+        
+        # Use lookup_compound for better phrase correction
+        suggestions = sym_spell.lookup_compound(query, max_edit_distance=2)
+        
+        if suggestions and len(suggestions) > 0:
+            best_suggestion = suggestions[0].term
+            # Only return suggestion if it's different from the original query
+            if best_suggestion.lower() != query.lower():
+                return JsonResponse({
+                    'suggestion': best_suggestion,
+                    'original': query
+                })
+        
+        return JsonResponse({'suggestion': None})
+        
+    except Exception as e:
+        logger.error(f'Spell check error: {e}')
+        return JsonResponse({
+            'suggestion': None,
+            'error': 'Spell check failed'
+        }, status=500)

@@ -42,3 +42,5 @@ python-pptx
 openpyxl
 xlrd
 pandas
+meilisearch
+symspellpy
