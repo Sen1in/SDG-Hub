@@ -39,7 +39,7 @@ class Form(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     
     # Association relationship
-    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='forms')
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='forms', null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_forms')
     last_modified_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='modified_forms', null=True, blank=True)
     
@@ -99,6 +99,9 @@ class Form(models.Model):
         # The form creator has admin privileges.
         if self.created_by == user:
             return 'admin'
+        
+        if self.team is None:
+            return None
         
         # Determine permissions based on team roles
         membership = TeamMembership.objects.filter(user=user, team=self.team).first()
@@ -222,3 +225,8 @@ class FormEditHistory(models.Model):
             models.Index(fields=['form', 'timestamp']),
             models.Index(fields=['form', 'field_name']),
         ]
+
+    @property
+    def is_personal(self):
+        """Check if it is a personal form (not associated with any team)"""
+        return self.team is None

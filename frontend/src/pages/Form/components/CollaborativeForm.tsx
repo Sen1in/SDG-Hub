@@ -26,6 +26,7 @@ const CollaborativeForm: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
   const { success, error: showError } = useNotification();
   
   const {
@@ -62,8 +63,29 @@ const CollaborativeForm: React.FC = () => {
     debouncedUpdate(fieldName, value);
   }, [canEdit, debouncedUpdate]);
 
+  const validateRequiredFields = useCallback(() => {
+    const errors: {[key: string]: string} = {};
+    
+    if (content?.form_type === 'action') {
+      if (!content.actions?.trim()) {
+        errors.actions = 'Actions field is required';
+      }
+      if (!content.action_detail?.trim()) {
+        errors.action_detail = 'Action Detail field is required';
+      }
+    }
+    
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [content]);
+
   const handleSubmitForReview = async (submissionData: any) => {
     try {
+      if (!validateRequiredFields()) {
+        showError('Please fill in all required fields before submitting');
+        return;
+      }
+
       setIsSubmitting(true);
       
       const token = localStorage.getItem('accessToken');
@@ -214,8 +236,8 @@ const CollaborativeForm: React.FC = () => {
     } else if (formType === FormType.ACTION) {
       return [
         ...commonFields,
-        { name: 'actions', label: 'Actions', type: 'textarea', rows: 3 },
-        { name: 'action_detail', label: 'Action Detail', type: 'textarea', rows: 4 },
+        { name: 'actions', label: 'Actions (This field will be used as the title in the Actions database)', type: 'textarea', rows: 3, required: true },
+        { name: 'action_detail', label: 'Action Detail', type: 'textarea', rows: 4, required: true },
         { 
           name: 'level', 
           label: 'Level', 

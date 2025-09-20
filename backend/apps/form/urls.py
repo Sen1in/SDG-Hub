@@ -5,6 +5,10 @@ urlpatterns = [
     # Team form management
     path('team/<int:team_id>/forms/', views.TeamFormListCreateView.as_view(), name='team-form-list-create'),
     path('team/<int:team_id>/forms/stats/', views.team_form_stats, name='team-form-stats'),
+
+    # Personal form management
+    path('forms/personal/', views.PersonalFormListCreateView.as_view(), name='personal-form-list-create'),
+    path('forms/personal/stats/', views.personal_form_stats, name='personal-form-stats'),
     
     # Form Details Management
     path('forms/<int:pk>/', views.FormDetailView.as_view(), name='form-detail'),

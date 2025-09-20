@@ -23,7 +23,8 @@ from .serializers import (
     CreateFormSerializer,
     FormContentSerializer,
     FormEditHistorySerializer,
-    FormEditSessionSerializer
+    FormEditSessionSerializer,
+    CreatePersonalFormSerializer
 )
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -100,6 +101,12 @@ class FormDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_object(self):
         """Obtain the form object and check the permissions"""
         obj = super().get_object()
+
+        if obj.team is None:
+            if obj.created_by != self.request.user:
+                from django.http import Http404
+                raise Http404("Form not found")
+            return obj
         
         # Check whether the user is a team member
         membership = TeamMembership.objects.filter(
@@ -116,13 +123,20 @@ class FormDetailView(generics.RetrieveUpdateDestroyAPIView):
     def update(self, request, *args, **kwargs):
         """Update form - Requires write or admin privileges"""
         form = self.get_object()
-        permission = form.get_user_permission(request.user)
-        
-        if permission not in ['write', 'admin']:
-            return Response(
-                {'error': 'Insufficient permissions to update this form'}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
+
+        if form.team is None:
+            if form.created_by != request.user:
+                return Response(
+                    {'error': 'Only the form creator can update this personal form'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        else:
+            permission = form.get_user_permission(request.user)
+            if permission not in ['write', 'admin']:
+                return Response(
+                    {'error': 'Insufficient permissions to update this form'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
         
         # Update last modifier
         if hasattr(form, 'last_modified_by'):
@@ -134,13 +148,20 @@ class FormDetailView(generics.RetrieveUpdateDestroyAPIView):
     def destroy(self, request, *args, **kwargs):
         """Delete form - Requires admin privileges"""
         form = self.get_object()
-        permission = form.get_user_permission(request.user)
-        
-        if permission != 'admin':
-            return Response(
-                {'error': 'Only form admin can delete this form'}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
+
+        if form.team is None:
+            if form.created_by != request.user:
+                return Response(
+                    {'error': 'Only the form creator can delete this personal form'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        else:
+            permission = form.get_user_permission(request.user)
+            if permission != 'admin':
+                return Response(
+                    {'error': 'Only form admin can delete this form'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
         
         return super().destroy(request, *args, **kwargs)
 
@@ -293,6 +314,9 @@ class CollaborativeFormDetailView(generics.RetrieveUpdateAPIView):
     
     def has_form_access(self, form):
         """Check if user has access to the form"""
+        if form.team is None:
+            return form.created_by == self.request.user
+
         from apps.team.models import TeamMembership
         membership = TeamMembership.objects.filter(
             user=self.request.user,
@@ -393,6 +417,9 @@ class CollaborativeFormDetailView(generics.RetrieveUpdateAPIView):
     
     def has_field_edit_permission(self, form, field_name):
         """Check if user has permission to edit this field"""
+        if form.team is None:
+            return form.created_by == self.request.user
+        
         membership = TeamMembership.objects.filter(
             user=self.request.user,
             team=form.team
@@ -438,24 +465,31 @@ def collaborative_form_batch_update(request, form_id):
     """Batch update multiple fields of the form"""
     form = get_object_or_404(Form, id=form_id)
     
-    # Check permissions
-    membership = TeamMembership.objects.filter(
-        user=request.user,
-        team=form.team
-    ).first()
-    
-    if not membership:
-        return Response(
-            {'error': 'You are not a member of this team'}, 
-            status=status.HTTP_403_FORBIDDEN
-        )
-    
-    if membership.role not in ['owner', 'edit']:
-        return Response(
-            {'error': 'No permission to edit this form'},
-            status=status.HTTP_403_FORBIDDEN
-        )
-    
+    if form.team is None:
+        if form.created_by != request.user:
+            return Response(
+                {'error': 'Only the form creator can edit this personal form'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+    else:
+        # Check permissions
+        membership = TeamMembership.objects.filter(
+            user=request.user,
+            team=form.team
+        ).first()
+        
+        if not membership:
+            return Response(
+                {'error': 'You are not a member of this team'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if membership.role not in ['owner', 'edit']:
+            return Response(
+                {'error': 'No permission to edit this form'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
 
     content, created = FormContent.objects.get_or_create(
         form=form,
@@ -464,7 +498,7 @@ def collaborative_form_batch_update(request, form_id):
             'title': form.title,
         }
     )
-    
+        
     changes = request.data.get('changes', {})
     if not changes:
         return Response(
@@ -582,7 +616,13 @@ def start_edit_session(request, form_id):
     form = get_object_or_404(Form, id=form_id)
     field_name = request.data.get('field_name')
     
-
+    if form.team is None:
+        if form.created_by != request.user:
+            return Response(
+                {'error': 'Only the form creator can edit this personal form'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
     session, created = FormEditSession.objects.update_or_create(
         form=form,
         user=request.user,
@@ -614,6 +654,13 @@ def start_edit_session(request, form_id):
 def end_edit_session(request, form_id):
     """End edit session"""
     form = get_object_or_404(Form, id=form_id)
+
+    if form.team is None:
+        if form.created_by != request.user:
+            return Response(
+                {'error': 'Only the form creator can edit this personal form'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
     
     FormEditSession.objects.filter(
         form=form,
@@ -639,6 +686,13 @@ def end_edit_session(request, form_id):
 def get_active_editors(request, form_id):
     """Get list of currently active editors"""
     form = get_object_or_404(Form, id=form_id)
+
+    if form.team is None:
+        if form.created_by != request.user:
+            return Response(
+                {'error': 'Only the form creator can access this personal form'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
     
     sessions = FormEditSession.objects.filter(
         form=form,
@@ -1374,18 +1428,25 @@ def submit_form_for_review(request, form_id):
     """Submit form for review - Only team owners can submit Action/Education forms"""
     form = get_object_or_404(Form, id=form_id)
     
-    # Check if user is team owner
-    membership = TeamMembership.objects.filter(
-        user=request.user,
-        team=form.team,
-        role='owner'
-    ).first()
-    
-    if not membership:
-        return Response(
-            {'error': 'Only team owner can submit forms for review'}, 
-            status=status.HTTP_403_FORBIDDEN
-        )
+    if form.team is None:
+        if form.created_by != request.user:
+            return Response(
+                {'error': 'Only the form creator can submit personal forms for review'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+    else:
+        # Check if user is team owner
+        membership = TeamMembership.objects.filter(
+            user=request.user,
+            team=form.team,
+            role='owner'
+        ).first()
+        
+        if not membership:
+            return Response(
+                {'error': 'Only team owner can submit forms for review'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
     
     # Check if form type is reviewable
     if form.type not in ['action', 'education']:
@@ -1429,8 +1490,9 @@ def submit_form_for_review(request, form_id):
         'form_id': form.id,
         'form_title': content.title or form.title,
         'form_type': form.type,
-        'team_id': form.team.id,
-        'team_name': form.team.name,
+        'form_source': 'personal' if form.team is None else 'team',
+        'team_id': form.team.id if form.team else None,
+        'team_name': form.team.name if form.team else 'Personal Form',
         'submitter_username': request.user.username,
         'submitter_email': request.user.email,
         'submitted_at': form.submitted_for_review_at.isoformat(),
@@ -1487,10 +1549,11 @@ def get_forms_for_review(request):
                 'title': content.title or form.title,
                 'description': content.description or form.description,
                 'type': form.type,
-                'team_name': form.team.name,
+                'team_name': form.team.name if form.team else 'Personal Form',
                 'submitted_by': form.created_by.username,
                 'submitted_at': form.submitted_for_review_at,
                 'created_at': form.created_at,
+                'is_personal': form.team is None,
             })
         except FormContent.DoesNotExist:
             continue
@@ -1526,8 +1589,8 @@ def get_pending_review_forms(request):
                 'title': content.title or form.title,
                 'description': content.description or form.description,
                 'type': form.type,
-                'team_name': form.team.name,
-                'team_id': form.team.id,
+                'team_name': form.team.name if form.team else 'Personal Form',
+                'team_id': form.team.id if form.team else None,
                 'submitted_by': form.created_by.username,
                 'submitted_at': form.submitted_for_review_at,
                 'created_at': form.created_at,
@@ -1581,7 +1644,7 @@ def get_form_for_review_detail(request, form_id):
             'form_id': form.id,
             'form_title': content.title or form.title,
             'form_type': form.type,
-            'team_name': form.team.name,
+            'team_name': form.team.name if form.team else 'Personal Form',
             'reviewer_username': request.user.username,
             'status': 'under_review',
             'message': f'Your form "{content.title or form.title}" is now under review.'
@@ -1603,7 +1666,7 @@ def get_form_for_review_detail(request, form_id):
             'id': form.id,
             'title': form.title,
             'type': form.type,
-            'team_name': form.team.name,
+            'team_name': form.team.name if form.team else 'Personal Form',
             'submitted_by': form.created_by.username,
             'submitted_at': form.submitted_for_review_at,
             'review_status': form.review_status,
@@ -1697,7 +1760,7 @@ def approve_form_review(request, form_id):
                     'form_id': form.id,
                     'form_title': content.title or form.title,
                     'form_type': form.type,
-                    'team_name': form.team.name,
+                    'team_name': form.team.name if form.team else 'Personal Form',
                     'reviewer_username': request.user.username,
                     'reviewed_at': form.reviewed_at.isoformat(),
                     'status': 'approved',
@@ -1781,7 +1844,7 @@ def reject_form_review(request, form_id):
                     'form_id': form.id,
                     'form_title': content.title or form.title,
                     'form_type': form.type,
-                    'team_name': form.team.name,
+                    'team_name': form.team.name if form.team else 'Personal Form',
                     'reviewer_username': request.user.username,
                     'reviewed_at': form.reviewed_at.isoformat(),
                     'status': 'rejected',
@@ -1804,3 +1867,47 @@ def reject_form_review(request, form_id):
             {'error': 'Form content not found'}, 
             status=status.HTTP_404_NOT_FOUND
         )
+    
+class PersonalFormListCreateView(generics.ListCreateAPIView):
+    """List and create personal forms for the authenticated user"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """Get personal forms created by the authenticated user"""
+        return Form.objects.filter(
+            team__isnull=True,
+            created_by=self.request.user
+        ).select_related('created_by', 'last_modified_by')
+    
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return CreatePersonalFormSerializer
+        return FormListSerializer
+    
+    def create(self, request, *args, **kwargs):
+        """Create a new personal form"""
+        return super().create(request, *args, **kwargs)
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def personal_form_stats(request):
+    """Get statistics for personal forms created by the authenticated user"""
+    forms = Form.objects.filter(
+        team__isnull=True,
+        created_by=request.user
+    )
+    
+    stats = {
+        'total_forms': forms.count(),
+        'active_forms': forms.filter(status='active').count(),
+        'locked_forms': forms.filter(status='locked').count(),
+        'archived_forms': forms.filter(status='archived').count(),
+        'forms_by_type': {
+            'action': forms.filter(type='action').count(),
+            'education': forms.filter(type='education').count(),
+            'blank': forms.filter(type='blank').count(),
+            'ida': forms.filter(type='ida').count(),
+        }
+    }
+    
+    return Response(stats)

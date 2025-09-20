@@ -1,18 +1,45 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CreateTeamModal from './components/CreateTeamModal';
+import CreateFormModal from '../Form/components/CreateFormModal';
+import FormStatsCard from '../Form/components/FormStatsCard';
+import PersonalFormCard from '../Form/components/PersonalFormCard';
 import { useTeams } from './hooks/useTeams';
 import { useCreateTeam } from './hooks/useCreateTeam';
+import { usePersonalForms, useCreateForm, useFormManagement } from '../Form/hooks/useTeamForms';
 import type { CreateTeamRequest } from './types';
+import type { CreateFormRequest, UpdateFormRequest } from '../Form/types/forms';
 
 const TeamPage: React.FC = () => {
   const navigate = useNavigate();
   const { teams, isLoading, error, addTeam } = useTeams();
   const { createTeam, isLoading: isCreating } = useCreateTeam();
-  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  
+  // Personal forms functionality
+  const {
+    forms: personalForms,
+    stats: personalStats,
+    isLoading: formsLoading,
+    error: formsError,
+    refetch: refetchPersonalForms
+  } = usePersonalForms();
+  
+  const { createForm: createPersonalForm, isLoading: isCreatingPersonalForm } = useCreateForm();
+  
+  // Form management for personal forms
+  const {
+    updateForm,
+    deleteForm,
+    toggleFormLock,
+    duplicateForm,
+    isLoading: isFormOperating
+  } = useFormManagement();
+  
+  const [showCreateTeamModal, setShowCreateTeamModal] = useState<boolean>(false);
+  const [showCreateFormModal, setShowCreateFormModal] = useState<boolean>(false);
 
   const handleCreateTeam = () => {
-    setShowCreateModal(true);
+    setShowCreateTeamModal(true);
   };
 
   const handleTeamClick = (teamId: string) => {
@@ -25,17 +52,123 @@ const TeamPage: React.FC = () => {
     try {
       const newTeam = await createTeam(teamData);
       addTeam(newTeam); 
-      setShowCreateModal(false); 
+      setShowCreateTeamModal(false); 
     } catch (error) {
       console.error('Failed to create team:', error);
-      // Don't close modal, let CreateTeamModal handle error display internally
-      // Error message will be shown in modal, so no need to handle anything here
       throw error; 
     }
   };
 
+  // Handle personal form creation
+  const handleCreatePersonalForm = () => {
+    setShowCreateFormModal(true);
+  };
+
+  const handleCreatePersonalFormSuccess = async (formData: CreateFormRequest) => {
+    try {
+      await createPersonalForm(formData);
+      await refetchPersonalForms();
+      setShowCreateFormModal(false);
+    } catch (error) {
+      console.error('Failed to create personal form:', error);
+      throw error;
+    }
+  };
+
+  const handlePersonalFormClick = (formId: string) => {
+    navigate(`/forms/${formId}`);
+  };
+
+  // Handle personal form operations
+  const handleUpdatePersonalForm = async (formId: string, updates: UpdateFormRequest): Promise<void> => {
+    try {
+      await updateForm(formId, updates);
+      await refetchPersonalForms();
+    } catch (error) {
+      console.error('Failed to update personal form:', error);
+      throw error;
+    }
+  };
+
+  const handleDeletePersonalForm = async (formId: string): Promise<void> => {
+    try {
+      await deleteForm(formId);
+      await refetchPersonalForms();
+    } catch (error) {
+      console.error('Failed to delete personal form:', error);
+      throw error;
+    }
+  };
+
+  const handleTogglePersonalFormLock = async (formId: string, isLocked: boolean): Promise<void> => {
+    try {
+      await toggleFormLock(formId, isLocked);
+      await refetchPersonalForms();
+    } catch (error) {
+      console.error('Failed to toggle personal form lock:', error);
+      throw error;
+    }
+  };
+
+  const handleDuplicatePersonalForm = async (formId: string): Promise<void> => {
+    try {
+      await duplicateForm(formId);
+      await refetchPersonalForms();
+    } catch (error) {
+      console.error('Failed to duplicate personal form:', error);
+      throw error;
+    }
+  };
+
+  // Get role display text
+  const getRoleDisplayText = (role: string) => {
+    switch (role) {
+      case 'owner':
+        return 'Owner';
+      case 'edit':
+        return 'Edit';
+      case 'view':
+        return 'View';
+      default:
+        return role;
+    }
+  };
+
+  // Get form type display text
+  const getFormTypeDisplay = (type: string) => {
+    switch (type) {
+      case 'action':
+        return 'Action';
+      case 'education':
+        return 'Education';
+      case 'blank':
+        return 'Note';
+      case 'ida':
+        return 'IDA';
+      default:
+        return type;
+    }
+  };
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) {
+      return 'Today';
+    } else if (diffInDays === 1) {
+      return 'Yesterday';
+    } else if (diffInDays < 7) {
+      return `${diffInDays} days ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
   // Loading state
-  if (isLoading) {
+  if (isLoading && teams.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -47,7 +180,7 @@ const TeamPage: React.FC = () => {
   }
 
   // Error state
-  if (error) {
+  if (error && teams.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -68,20 +201,6 @@ const TeamPage: React.FC = () => {
       </div>
     );
   }
-
-  // Get role display text
-  const getRoleDisplayText = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return 'Owner';
-      case 'edit':
-        return 'Edit';
-      case 'view':
-        return 'View';
-      default:
-        return role;
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -114,8 +233,8 @@ const TeamPage: React.FC = () => {
           </button>
         </div>
 
-     {/* Team cards grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        {/* Team cards grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-12">
           {teams.map((team) => (
             <div
               key={team.id}
@@ -173,12 +292,112 @@ const TeamPage: React.FC = () => {
           )}
         </div>
 
+        {/* Personal Forms Section */}
+        <div className="border-t border-gray-200 pt-8">
+          <div className="flex justify-between items-start mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Your Personal Forms</h2>
+              <p className="text-lg text-gray-600">
+                Forms you created for personal use ({personalForms.length} forms)
+              </p>
+            </div>
+            <button
+              onClick={handleCreatePersonalForm}
+              disabled={isCreatingPersonalForm}
+              className="bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
+            >
+              {isCreatingPersonalForm ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              )}
+              <span>{isCreatingPersonalForm ? 'Creating...' : 'Create Personal Form'}</span>
+            </button>
+          </div>
+
+          {/* Personal forms statistics cards */}
+          {personalStats && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <FormStatsCard
+                title="Total Forms"
+                value={personalStats.totalForms}
+                icon="document"
+                color="blue"
+              />
+              <FormStatsCard
+                title="Active Forms"
+                value={personalStats.activeForms}
+                icon="check-circle"
+                color="green"
+              />
+              <FormStatsCard
+                title="Locked Forms"
+                value={personalStats.lockedForms}
+                icon="lock"
+                color="red"
+              />
+            </div>
+          )}
+
+          {/* Personal forms grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {personalForms.map((form) => (
+              <PersonalFormCard
+                key={form.id}
+                form={form}
+                onUpdateForm={handleUpdatePersonalForm}
+                onDeleteForm={handleDeletePersonalForm}
+                onToggleLock={handleTogglePersonalFormLock}
+                onDuplicateForm={handleDuplicatePersonalForm}
+                onFormClick={handlePersonalFormClick}
+                formatDate={formatDate}
+                getFormTypeDisplay={getFormTypeDisplay}
+                isLoading={isFormOperating}
+              />
+            ))}
+            
+            {/* Empty state for personal forms */}
+            {personalForms.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center py-16">
+                <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-6">
+                  <svg className="w-12 h-12 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No personal forms yet</h3>
+                <p className="text-gray-600 mb-6 text-center max-w-md">
+                  Create your first personal form to start working on your own projects and ideas.
+                </p>
+                <button
+                  onClick={handleCreatePersonalForm}
+                  disabled={isCreatingPersonalForm}
+                  className="bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200"
+                >
+                  {isCreatingPersonalForm ? 'Creating...' : 'Create Your First Personal Form'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Create team modal */}
         <CreateTeamModal 
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
+          isOpen={showCreateTeamModal}
+          onClose={() => setShowCreateTeamModal(false)}
           onSuccess={handleCreateTeamSuccess}
           isLoading={isCreating}
+        />
+
+        {/* Create personal form modal */}
+        <CreateFormModal
+          isOpen={showCreateFormModal}
+          onClose={() => setShowCreateFormModal(false)}
+          onSuccess={handleCreatePersonalFormSuccess}
+          teamId=""
+          isLoading={isCreatingPersonalForm}
+          isPersonal={true}
         />
       </div>
     </div>
