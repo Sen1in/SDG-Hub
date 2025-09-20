@@ -91,26 +91,54 @@ class NotificationApiService {
     }
     
     try {
-      return notifications.map((notification: any) => ({
-        id: notification.id?.toString() || '',
-        type: notification.type || 'team_invitation',
-        data: {
-          id: notification.data?.id?.toString() || '',
-          team_id: notification.data?.team_id?.toString() || '',
-          team_name: notification.data?.team_name || 'Unknown Team',
-          inviter_username: notification.data?.inviter_username || '',
-          inviter_email: notification.data?.inviter_email || '',
-          invited_by_email: notification.data?.invited_by_email || false,
-          invited_identifier: notification.data?.invited_identifier || '',
-          created_at: notification.data?.created_at || '',
-          expires_at: notification.data?.expires_at || '',
-          status: notification.data?.status || 'pending',
-        },
-        created_at: notification.created_at || '',
-        expires_at: notification.expires_at || '',
-        is_read: notification.is_read || false,
-        status: notification.status || 'pending',
-      }));
+      return notifications.map((notification: any) => {
+        const baseNotification = {
+          id: notification.id?.toString() || '',
+          notification_type: notification.notification_type || 'team_invitation',
+          created_at: notification.created_at || '',
+          expires_at: notification.expires_at || '',
+          is_read: notification.is_read || false,
+          status: notification.status || 'pending',
+        };
+
+        // Handle different notification types with different data structures
+        if (notification.notification_type === 'team_invitation') {
+          return {
+            ...baseNotification,
+            data: {
+              id: notification.data?.id?.toString() || '',
+              team_id: notification.data?.team_id?.toString() || '',
+              team_name: notification.data?.team_name || 'Unknown Team',
+              inviter_username: notification.data?.inviter_username || '',
+              inviter_email: notification.data?.inviter_email || '',
+              invited_by_email: notification.data?.invited_by_email || false,
+              invited_identifier: notification.data?.invited_identifier || '',
+              created_at: notification.data?.created_at || '',
+              expires_at: notification.data?.expires_at || '',
+              status: notification.data?.status || 'pending',
+            },
+          };
+        } else if (notification.notification_type === 'form_review_request') {
+          return {
+            ...baseNotification,
+            data: {
+              form_id: notification.data?.form_id?.toString() || '',
+              form_title: notification.data?.form_title || 'Unknown Form',
+              form_type: notification.data?.form_type || 'action',
+              team_id: notification.data?.team_id?.toString() || '',
+              team_name: notification.data?.team_name || 'Unknown Team',
+              submitter_username: notification.data?.submitter_username || '',
+              submitter_email: notification.data?.submitter_email || '',
+              submitted_at: notification.data?.submitted_at || '',
+            },
+          };
+        } else {
+          return {
+            ...baseNotification,
+            data: notification.data || {},
+          };
+        }
+      });
     } catch (error) {
       console.error('Error parsing notifications:', error);
       return [];
@@ -132,6 +160,18 @@ class NotificationApiService {
   // Reject team invitation
   async rejectInvitation(notificationId: string): Promise<any> {
     const response = await this.fetchWithAuth('/notifications/reject/', {
+      method: 'POST',
+      body: JSON.stringify({
+        notification_id: notificationId,
+      }),
+    });
+    
+    return response;
+  }
+
+  // Accept form review request (NEW)
+  async acceptReviewRequest(notificationId: string): Promise<any> {
+    const response = await this.fetchWithAuth('/notifications/accept-review/', {
       method: 'POST',
       body: JSON.stringify({
         notification_id: notificationId,

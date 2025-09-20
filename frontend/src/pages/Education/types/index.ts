@@ -1,8 +1,7 @@
 export interface EducationResource {
   id: number;
   title: string;
-  description: string;
-  descriptions?: string;
+  descriptions: string;
   aims: string;
   learning_outcome_expecting_outcome_field: string;
   organization: string;

@@ -60,8 +60,6 @@ export const useCollaborativeForm = (formId: string) => {
       const permission = formData.permission;
       const canEdit = permission === 'admin' || permission === 'write';
       
-      console.log('Form permission:', permission, 'Can edit:', canEdit);
-      
       // 获取协作表单内容
       const contentResponse = await fetch(`${API_BASE_URL}/api/forms/${formId}/collaborative/`, {
         headers: {
@@ -170,7 +168,6 @@ export const useCollaborativeForm = (formId: string) => {
     }
 
     const wsUrl = `${WS_BASE_URL}/ws/form/${formId}/?token=${token}`;
-    console.log('Attempting WebSocket connection to:', wsUrl);
     
     try {
       wsRef.current = new WebSocket(wsUrl);
@@ -190,7 +187,6 @@ export const useCollaborativeForm = (formId: string) => {
         console.log('WebSocket closed:', event.code, event.reason);
         setState(prev => ({ ...prev, isConnected: false }));
         
-        // 处理不同的关闭代码
         if (event.code === 4403) {
           setState(prev => ({
             ...prev,
@@ -198,7 +194,6 @@ export const useCollaborativeForm = (formId: string) => {
             connectionStatus: 'permission_denied'
           }));
         } else if (event.code === 1006 && reconnectAttempts.current < maxReconnectAttempts) {
-          // 意外断开连接，尝试重连
           console.log(`Attempting to reconnect (${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
           reconnectAttempts.current++;
           reconnectTimeoutRef.current = setTimeout(() => {

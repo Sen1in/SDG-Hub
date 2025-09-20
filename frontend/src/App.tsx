@@ -33,6 +33,7 @@ import DataManagement from './pages/DataManagement/DataManagement';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
 import PasswordResetSuccess from './pages/Auth/PasswordResetSuccess';
+import FormReviewInterface from './pages/Form/components/FormReviewInterface';
 import Goal1 from './pages/SDGTargets/Goal1';
 import Goal2 from './pages/SDGTargets/Goal2';
 import Goal3 from './pages/SDGTargets/Goal3';
@@ -96,6 +97,7 @@ function App() {
             <Route path="/team/:teamId" element={<TeamDetails />} />
             <Route path="/team/:teamId/forms" element={<TeamForms />} />
             <Route path="/team/:teamId/forms/:formId" element={<CollaborativeForm />} />
+            <Route path="/team/:teamId/forms/:formId/review" element={<FormReviewInterface />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/liked" element={<LikedPage />} />
             <Route path="/data-management" element={<DataManagement />} />

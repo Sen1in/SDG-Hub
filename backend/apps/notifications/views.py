@@ -235,3 +235,48 @@ def cleanup_notifications(request):
         'notifications_deleted': notifications_cleaned,
         'invitations_deleted': invitations_cleaned
     }, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def accept_review_request(request):
+    """Accept form review request and redirect to review interface"""
+    serializer = AcceptInvitationSerializer(data=request.data)
+    
+    if not serializer.is_valid():
+        return Response(
+            {'error': serializer.errors}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    notification_id = serializer.validated_data['notification_id']
+    notification = get_object_or_404(
+        Notification, 
+        id=notification_id, 
+        recipient=request.user,
+        notification_type='form_review_request'
+    )
+    
+    if notification.status != 'pending':
+        return Response(
+            {'error': f'Review request is {notification.status}'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if notification.is_expired:
+        notification.mark_as_expired()
+        return Response(
+            {'error': 'Review request has expired'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Mark notification as accepted
+    notification.is_read = True
+    notification.save()
+    
+    return Response({
+        'message': 'Review request accepted',
+        'form_id': notification.data['form_id'],
+        'form_title': notification.data['form_title'],
+        'form_type': notification.data['form_type'],
+        'review_url': f"/team/{notification.data['team_id']}/forms/{notification.data['form_id']}/review"
+    }, status=status.HTTP_200_OK)
