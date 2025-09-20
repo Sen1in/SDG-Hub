@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { fetchUnifiedSearchResults } from '../utils/api';
+import { sortCombined } from '../../../utils/sort';
 
 export const useSearchData = (
   query: string,
@@ -27,7 +28,13 @@ export const useSearchData = (
       try {
         const data = await fetchUnifiedSearchResults(query, page, itemsPerPage, sort, sdgs, location, source);
         if (currentRequestRef.current === requestId) {
-          setResults(data.results);
+          // Apply frontend fallback sorting if server-side sorting is insufficient
+          // This ensures consistent ordering even when results come from different sources
+          const sortedResults = sort === 'unified_ranking' || sort === 'relevance' 
+            ? sortCombined(data.results) 
+            : data.results;
+          
+          setResults(sortedResults);
           setTotal(data.total);
           setTotalPages(Math.ceil(data.total / itemsPerPage));
         }

@@ -54,8 +54,9 @@ class Command(BaseCommand):
             self.stdout.write('Configuring index settings...')
             index.update_settings({
                 "searchableAttributes": ["title", "summary", "content"],
-                "displayedAttributes": ["id", "type", "title", "summary", "url"],
-                "filterableAttributes": ["type"],
+                "displayedAttributes": ["id", "type", "title", "summary", "url", "year", "has_award", "awards_count"],
+                "filterableAttributes": ["type", "year", "has_award"],
+                "sortableAttributes": ["has_award", "awards_count", "year", "title"],
                 "typoTolerance": {
                     "enabled": True,
                     "minWordSizeForTypos": {"oneTypo": 4, "twoTypos": 8}
@@ -160,13 +161,28 @@ class Command(BaseCommand):
             ]
             content = ' '.join(filter(None, content_parts))
 
+            # Extract year from year field or default to 0
+            year = 0
+            if edu.year:
+                try:
+                    year = int(str(edu.year)[:4]) if str(edu.year).strip() else 0
+                except (ValueError, TypeError):
+                    year = 0
+
+            # Education resources typically don't have awards, so set to 0
+            has_award = False
+            awards_count = 0
+
             return {
                 'id': f'education-{edu.id}',
                 'type': 'education',
                 'title': edu.title or f'Education Resource {edu.id}',
                 'summary': summary,
                 'content': content,
-                'url': f'/education/{edu.id}'
+                'url': f'/education/{edu.id}',
+                'year': year,
+                'has_award': has_award,
+                'awards_count': awards_count
             }
         except Exception as e:
             logger.warning(f'Error creating education doc for ID {edu.id}: {e}')
@@ -189,13 +205,30 @@ class Command(BaseCommand):
             ]
             content = ' '.join(filter(None, content_parts))
 
+            # Extract award information from the award field
+            awards_count = 0
+            has_award = False
+            if action.award:
+                try:
+                    awards_count = int(action.award) if action.award > 0 else 0
+                    has_award = awards_count > 0
+                except (ValueError, TypeError):
+                    awards_count = 0
+                    has_award = False
+
+            # Actions don't typically have year field, set to 0
+            year = 0
+
             return {
                 'id': f'action-{action.id}',
                 'type': 'action',
                 'title': action.actions or f'Action Resource {action.id}',
                 'summary': summary,
                 'content': content,
-                'url': f'/actions/{action.id}'
+                'url': f'/actions/{action.id}',
+                'year': year,
+                'has_award': has_award,
+                'awards_count': awards_count
             }
         except Exception as e:
             logger.warning(f'Error creating action doc for ID {action.id}: {e}')
@@ -223,13 +256,21 @@ class Command(BaseCommand):
             # Use keyword text as part of ID to ensure uniqueness
             safe_keyword = keyword_text.lower().replace(' ', '_').replace('/', '_')[:50]
             
+            # Keywords don't have awards or year, set to 0/False
+            year = 0
+            has_award = False
+            awards_count = 0
+            
             return {
                 'id': f'keyword-{safe_keyword}',
                 'type': 'keyword',
                 'title': keyword_text,
                 'summary': summary,
                 'content': content,
-                'url': f'/keywords?search={keyword.keyword}' if keyword.keyword else f'/keywords'
+                'url': f'/keywords?search={keyword.keyword}' if keyword.keyword else f'/keywords',
+                'year': year,
+                'has_award': has_award,
+                'awards_count': awards_count
             }
         except Exception as e:
             logger.warning(f'Error creating keyword doc for ID {keyword.id}: {e}')
