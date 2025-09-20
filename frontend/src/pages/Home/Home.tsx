@@ -173,7 +173,7 @@ const Home: React.FC = () => {
   const features = [
     {
       title: 'SDG Education Database',
-      description: 'Over 3,100 entries offering in-depth insights into SDG-related education.',
+      description: 'Thousands of entries offering in-depth insights into SDG-related education.',
       icon: '📖',
       count: `${educationCount.toLocaleString()}`,
       color: 'from-blue-500 to-blue-600',
@@ -181,7 +181,7 @@ const Home: React.FC = () => {
     },
     {
       title: 'SDG Action Database',
-      description: '2,200 curated items highlighting actionable SDG plans and real-world examples.',
+      description: 'A wealth of curated content highlighting actionable SDG plans and real-world examples.',
       icon: '🎯',
       count: `${actionsCount.toLocaleString()}`,
       color: 'from-green-500 to-green-600',
