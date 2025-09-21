@@ -1636,9 +1636,12 @@ def get_form_for_review_detail(request, form_id):
         form.review_status = 'under_review'
         form.save(update_fields=['review_status'])
 
-        team_members = User.objects.filter(
-            team_memberships__team=form.team
-        ).exclude(id=request.user.id)
+        if form.team is None:
+            recipients = [form.created_by]
+        else:
+            recipients = User.objects.filter(
+                team_memberships__team=form.team
+            ).exclude(id=request.user.id)
         
         notification_data = {
             'form_id': form.id,
@@ -1650,9 +1653,9 @@ def get_form_for_review_detail(request, form_id):
             'message': f'Your form "{content.title or form.title}" is now under review.'
         }
         
-        for member in team_members:
+        for recipient in recipients:
             Notification.objects.create(
-                recipient=member,
+                recipient=recipient,
                 notification_type='form_review_status_update',
                 data=notification_data,
                 expires_at=timezone.now() + timedelta(days=7),
@@ -1748,13 +1751,16 @@ def approve_form_review(request, form_id):
             status='pending'
         ).update(status='accepted')
         
-        team_members = User.objects.filter(
-            team_memberships__team=form.team
-        )
+        if form.team is None:
+            recipients = [form.created_by]
+        else:
+            recipients = User.objects.filter(
+                team_memberships__team=form.team
+            ).exclude(id=request.user.id)
         
-        for member in team_members:
+        for recipient in recipients:
             Notification.objects.create(
-                recipient=member,
+                recipient=recipient,
                 notification_type='form_review_completed',
                 data={
                     'form_id': form.id,
@@ -1832,13 +1838,16 @@ def reject_form_review(request, form_id):
             status='pending'
         ).update(status='rejected')
         
-        team_members = User.objects.filter(
-            team_memberships__team=form.team
-        )
+        if form.team is None:
+            recipients = [form.created_by]
+        else:
+            recipients = User.objects.filter(
+                team_memberships__team=form.team
+            ).exclude(id=request.user.id)
         
-        for member in team_members:
+        for recipient in recipients:
             Notification.objects.create(
-                recipient=member,
+                recipient=recipient,
                 notification_type='form_review_completed',
                 data={
                     'form_id': form.id,
