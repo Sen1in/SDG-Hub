@@ -25,8 +25,6 @@ const SearchResultPage: React.FC = () => {
   const [selectedSDGs, setSelectedSDGs] = React.useState<number[]>(initialSDGs);
   const [selectedLocation, setSelectedLocation] = React.useState(initialLocation);
   const [selectedSource, setSelectedSource] = React.useState(initialSource);
-  const [availableLocations, setAvailableLocations] = React.useState<string[]>([]);
-
 
   const [sort, setSort] = React.useState('relevance');
   const { results, loading, totalPages, total, error } = useSearchData(
@@ -38,6 +36,7 @@ const SearchResultPage: React.FC = () => {
     selectedLocation,
     selectedSource
   );
+  
   const stats = {
     filter_options: {
       years: [],
@@ -51,8 +50,6 @@ const SearchResultPage: React.FC = () => {
     sdg_distribution: {}
   };
 
-
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -61,22 +58,6 @@ const SearchResultPage: React.FC = () => {
     setCurrentPage(1);
     setItemsPerPage(newItemsPerPage);
   };
-
-  const handleResourceClick = (
-    resourceId: number,
-    type: 'education' | 'action' | 'keywords',
-    title?: string // available parameter
-  ) => {
-    if (type === 'education') {
-      navigate(`/education/${resourceId}`);
-    } else if (type === 'action') {
-      navigate(`/actions/${resourceId}`);
-    } else if (type === 'keywords' && title) {
-      navigate(`/keywords/${encodeURIComponent(title)}`);
-    }
-  };
-
-
 
   if (!query.trim()) {
     return (
@@ -101,7 +82,7 @@ const SearchResultPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col lg:flex-row gap-6">
 
-          {/* left filter*/}
+          {/* Left filter */}
           <div className="lg:w-1/4">
             <FilterPanel
               filters={{
@@ -134,13 +115,9 @@ const SearchResultPage: React.FC = () => {
             />
           </div>
 
-          {/* right result lists */}
+          {/* Right result lists */}
           <div className="lg:w-3/4">
-            {/* Sort selector above the list */}
             <div className="flex justify-end items-center mb-4">
-              {/* <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>Total: {total} items</span>
-              </div> */}
               <SortSelector sort={sort} onSortChange={(newSort) => {
                 setSort(newSort);
                 setCurrentPage(1);
@@ -150,7 +127,7 @@ const SearchResultPage: React.FC = () => {
             <ResourceList
               resources={results}
               loading={loading}
-              onResourceClick={handleResourceClick}
+              // Remove onResourceClick prop
             />
             
             <div className="flex items-center justify-between mt-6 p-4 bg-white rounded-lg border border-gray-200">
