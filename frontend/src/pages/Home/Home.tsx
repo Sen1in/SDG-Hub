@@ -256,6 +256,7 @@ const Home: React.FC = () => {
                 onChange={setSearchQuery}
                 onSearch={handleSearch}
                 onSuggestionClick={handleSuggestionClick}
+                enableInstantSearch={true}
                 config={{
                   placeholder: "Search keywords, actions, education...",
                   minInputLength: 2,

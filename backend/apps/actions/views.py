@@ -125,7 +125,13 @@ class ActionListView(generics.ListAPIView):
         if award and award.isdigit():
             queryset = queryset.filter(award=int(award))
         
-        return queryset.distinct()
+        # Apply unified ranking: has_award DESC → title ASC (Actions don't have year field)
+        queryset = queryset.order_by(
+            '-award',  # Award DESC (1 before 0, so awarded actions come first)
+            'actions'  # Title ASC (alphabetical order)
+        ).distinct()
+        
+        return queryset
 
 class ActionDetailView(generics.RetrieveAPIView):
     """Action Resource Details API"""

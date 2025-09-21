@@ -1,5 +1,9 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useSearchSuggestions } from '../../hooks/useSearchSuggestions';
+import { useInstantSearch } from '../../hooks/useInstantSearch';
+import { useInstantActionsSearch } from '../../hooks/useInstantActionsSearch';
+import { useInstantEducationSearch } from '../../hooks/useInstantEducationSearch';
+import { useSpellCheck } from '../../hooks/useSpellCheck';
 import { AutocompleteSearchBarProps, SearchSuggestion } from '../../types/autocomplete';
 
 type StyleVariant = 'default' | 'hero' | 'filter';
@@ -12,6 +16,8 @@ interface ExtendedAutocompleteSearchBarProps extends AutocompleteSearchBarProps 
     button?: string;
     dropdown?: string;
   };
+  enableInstantSearch?: boolean; // Enable instant search mode
+  instantSearchType?: 'all' | 'action' | 'education'; // Type of instant search
 
   suggestions?: SearchSuggestion[];
   isLoading?: boolean;
@@ -30,6 +36,8 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
   disabled = false,
   variant = 'default',
   customStyles = {},
+  enableInstantSearch = false,
+  instantSearchType = 'all',
   // 外部传入的建议数据
   suggestions: externalSuggestions,
   isLoading: externalIsLoading,
@@ -41,6 +49,41 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
   const containerRef = useRef<HTMLDivElement>(null);
   const suggestionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+  // State for managing instant search vs traditional suggestions
+  const [showSpellSuggestion, setShowSpellSuggestion] = useState(false);
+  const [spellCheckTimeout, setSpellCheckTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [instantSelectedIndex, setInstantSelectedIndex] = useState(-1);
+  const [forceClosedInstant, setForceClosedInstant] = useState(false);
+
+  // Traditional search suggestions hook
+  const traditionalSearch = useSearchSuggestions(value, config);
+
+  // Instant search hooks (only used when enabled)
+  const instantSearchAll = useInstantSearch(value, 200, 2);
+  const instantSearchActions = useInstantActionsSearch(value, 200, 2);
+  const instantSearchEducation = useInstantEducationSearch(value, 200, 2);
+
+  // Spell check hook
+  const spellCheck = useSpellCheck(300, 2);
+
+  // Choose which search method to use
+  const useInstant = enableInstantSearch && (variant === 'hero' || variant === 'filter');
+  
+  // Select the appropriate instant search hook based on type
+  const getInstantSearch = () => {
+    switch (instantSearchType) {
+      case 'action':
+        return instantSearchActions;
+      case 'education':
+        return instantSearchEducation;
+      case 'all':
+      default:
+        return instantSearchAll;
+    }
+  };
+  
+  const instantSearch = getInstantSearch();
+  
   const {
     suggestions: internalSuggestions,
     isLoading: internalIsLoading,
@@ -52,7 +95,27 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
     selectSuggestion,
     clearError,
     config: mergedConfig
-  } = useSearchSuggestions(value, config);
+  } = useInstant ? {
+    suggestions: instantSearch.hits.map(hit => ({
+      term: hit.title,
+      count: 0,
+      type: 'instant' as const,
+      _formatted: hit._formatted
+    })),
+    isLoading: instantSearch.loading,
+    isOpen: !forceClosedInstant && instantSearch.hits.length > 0 && value.length >= 2,
+    error: instantSearch.error,
+    selectedIndex: instantSelectedIndex,
+    handleKeyDown: () => null, // Custom handling in handleInputKeyDown
+    closeSuggestions: () => {
+      setInstantSelectedIndex(-1);
+      setForceClosedInstant(true);
+      traditionalSearch.closeSuggestions();
+    },
+    selectSuggestion: traditionalSearch.selectSuggestion,
+    clearError: traditionalSearch.clearError,
+    config: traditionalSearch.config
+  } : traditionalSearch;
 
   // 使用外部数据或内部Hook数据
   const suggestions = externalSuggestions || internalSuggestions;
@@ -71,13 +134,13 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
       container: 'relative w-full max-w-2xl mx-auto',
       input: 'w-full px-6 py-4 pr-16 text-lg bg-white/95 backdrop-blur-sm border border-white/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-white/30',
       button: 'absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors duration-200 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95',
-      dropdown: 'absolute left-0 right-0 top-full z-50 mt-2 bg-white border border-white/30 rounded-xl shadow-2xl max-h-72 overflow-y-auto'
+      dropdown: 'absolute left-0 right-0 top-full z-40 mt-2 bg-white/95 rounded-xl overflow-y-auto autocomplete-dropdown'
     },
     filter: {
       container: 'relative w-full',
       input: 'w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm',
       button: 'absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors duration-200 p-1',
-      dropdown: 'absolute left-0 right-0 top-full z-50 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto'
+      dropdown: 'absolute left-0 top-full z-50 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto min-w-full w-max'
     }
   };
 
@@ -93,17 +156,46 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
     const newValue = e.target.value;
     onChange(newValue);
     if (error) clearError();
+    
+    // Reset spell suggestion when typing
+    setShowSpellSuggestion(false);
+    
+    // Reset instant search selection when typing
+    if (useInstant) {
+      setInstantSelectedIndex(-1);
+      setForceClosedInstant(false); // Allow dropdown to show again when typing
+    }
+    
+    // Clear previous spell check timeout
+    if (spellCheckTimeout) {
+      clearTimeout(spellCheckTimeout);
+      setSpellCheckTimeout(null);
+    }
+    
+    // If using instant search and no results, trigger spell check after a delay
+    if (useInstant && newValue.length >= 2) {
+      const timeout = setTimeout(() => {
+        if (instantSearch.hits.length === 0 && !instantSearch.loading) {
+          spellCheck.checkSpelling(newValue);
+          setShowSpellSuggestion(true);
+        }
+      }, 500); // Wait a bit to see if results come in
+      
+      setSpellCheckTimeout(timeout);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     closeSuggestions();
+    setInstantSelectedIndex(-1); // Reset selection
     onSearch(value);
   };
 
   const handleSuggestionClick = (suggestion: SearchSuggestion) => {
     onChange(suggestion.term);
     closeSuggestions();
+    setShowSpellSuggestion(false);
     
     if (onSuggestionClick) {
       onSuggestionClick(suggestion);
@@ -114,13 +206,58 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
     inputRef.current?.focus();
   };
 
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const selectedSuggestion = handleKeyDown(e);
+  const handleSpellSuggestionClick = (suggestion: string) => {
+    onChange(suggestion);
+    setShowSpellSuggestion(false);
+    closeSuggestions();
     
-    if (selectedSuggestion) {
-      handleSuggestionClick(selectedSuggestion);
-    } else if (e.key === 'Enter' && selectedIndex === -1) {
-      handleSubmit(e);
+    // Create a SearchSuggestion object for the spell suggestion
+    const spellSuggestion: SearchSuggestion = {
+      term: suggestion,
+      count: 0,
+      type: 'spell' as const
+    };
+    
+    if (onSuggestionClick) {
+      onSuggestionClick(spellSuggestion);
+    } else {
+      onSearch(suggestion);
+    }
+    
+    inputRef.current?.focus();
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (useInstant) {
+      // Custom keyboard handling for instant search
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const newIndex = instantSelectedIndex < suggestions.length - 1 ? instantSelectedIndex + 1 : -1;
+        setInstantSelectedIndex(newIndex);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const newIndex = instantSelectedIndex > -1 ? instantSelectedIndex - 1 : suggestions.length - 1;
+        setInstantSelectedIndex(newIndex);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (instantSelectedIndex >= 0 && instantSelectedIndex < suggestions.length && suggestions[instantSelectedIndex]) {
+          handleSuggestionClick(suggestions[instantSelectedIndex]);
+        } else {
+          handleSubmit(e);
+        }
+      } else if (e.key === 'Escape') {
+        closeSuggestions();
+        setInstantSelectedIndex(-1);
+      }
+    } else {
+      // Traditional search handling
+      const selectedSuggestion = handleKeyDown(e);
+      
+      if (selectedSuggestion) {
+        handleSuggestionClick(selectedSuggestion);
+      } else if (e.key === 'Enter' && selectedIndex === -1) {
+        handleSubmit(e);
+      }
     }
   };
 
@@ -139,20 +276,46 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
     const dropdown = dropdownRef.current;
     const containerRect = container.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
-    const spaceBelow = viewportHeight - containerRect.bottom;
-    const dropdownHeight = dropdown.scrollHeight;
     
-    if (spaceBelow < dropdownHeight && containerRect.top > dropdownHeight) {
+    // Calculate available space above and below
+    const spaceAbove = containerRect.top;
+    const spaceBelow = viewportHeight - containerRect.bottom;
+    
+    // Calculate optimal height based on number of suggestions
+    const suggestionHeight = 60; // Approximate height per suggestion
+    const idealHeight = Math.min(suggestions.length * suggestionHeight, 300); // Cap at 300px
+    
+    // Reserve space for content below (hot searches, footer, etc.)
+    const reservedSpaceBelow = 120;
+    const availableSpaceBelow = spaceBelow - reservedSpaceBelow;
+    
+    // Decide positioning: prefer below, but go above if necessary
+    const shouldPositionAbove = availableSpaceBelow < 150 && spaceAbove > idealHeight;
+    
+    if (shouldPositionAbove) {
+      // Position above the input
       dropdown.style.top = 'auto';
       dropdown.style.bottom = '100%';
       dropdown.style.marginTop = '0';
       dropdown.style.marginBottom = '4px';
+      
+      const maxHeight = Math.min(idealHeight, spaceAbove - 20);
+      dropdown.style.maxHeight = `${maxHeight}px`;
     } else {
+      // Position below the input (default)
       dropdown.style.top = '100%';
       dropdown.style.bottom = 'auto';
       dropdown.style.marginTop = '4px';
       dropdown.style.marginBottom = '0';
+      
+      const maxHeight = Math.max(
+        120, // Minimum height to show at least 2 suggestions
+        Math.min(idealHeight, availableSpaceBelow)
+      );
+      dropdown.style.maxHeight = `${maxHeight}px`;
     }
+    
+    dropdown.style.overflowY = dropdown.scrollHeight > parseInt(dropdown.style.maxHeight) ? 'auto' : 'hidden';
   };
 
   useEffect(() => {
@@ -180,6 +343,15 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
       };
     }
   }, [isOpen]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (spellCheckTimeout) {
+        clearTimeout(spellCheckTimeout);
+      }
+    };
+  }, [spellCheckTimeout]);
 
   return (
     <div className={className}>
@@ -232,8 +404,9 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
             role="listbox"
             aria-label="Search suggestions"
             style={{
-              minWidth: '100%',
-              maxWidth: '100vw'
+              minWidth: variant === 'filter' ? '100%' : '100%',
+              maxWidth: variant === 'filter' ? 'none' : '100vw',
+              width: variant === 'filter' ? 'max-content' : 'auto'
             }}
           >
             {suggestions.map((suggestion, index) => (
@@ -242,24 +415,47 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
                 ref={el => suggestionRefs.current[index] = el}
                 type="button"
                 onClick={() => handleSuggestionClick(suggestion)}
-                className={`w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors duration-150 flex items-center justify-between group ${selectedIndex === index ? 'bg-blue-100 text-blue-900' : 'text-gray-900'} ${index === suggestions.length - 1 ? '' : 'border-b border-gray-100'}`}
+                className={`w-full ${variant === 'filter' ? 'px-3 py-1.5' : 'px-3 py-2'} text-left hover:bg-blue-50 transition-colors duration-150 flex items-center justify-between group ${selectedIndex === index ? 'bg-blue-100 text-blue-900' : 'text-gray-900'} ${index === suggestions.length - 1 ? '' : 'border-b border-gray-100'}`}
                 role="option"
                 aria-selected={selectedIndex === index}
               >
                 <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`${variant === 'filter' ? 'w-3.5 h-3.5' : 'w-4 h-4'} text-gray-400 flex-shrink-0`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M16.5 10.5a6 6 0 11-12 0 6 6 0 0112 0z" />
                   </svg>
-                  <span className="font-medium truncate">{suggestion.term}</span>
+                  {/* Render with highlighting if available */}
+                  {useInstant && suggestion._formatted?.title ? (
+                    <span 
+                      className={`${variant === 'filter' ? 'text-sm font-medium' : 'font-medium'} ${variant === 'filter' ? 'whitespace-nowrap' : 'truncate'} instant-search-highlight`}
+                      dangerouslySetInnerHTML={{ __html: suggestion._formatted.title }}
+                    />
+                  ) : (
+                    <span className={`${variant === 'filter' ? 'text-sm font-medium' : 'font-medium'} ${variant === 'filter' ? 'whitespace-nowrap' : 'truncate'}`}>{suggestion.term}</span>
+                  )}
                 </span>
 
                 {mergedConfig.showCount && suggestion.count > 0 && (
-                  <span className={`ml-2 px-2 py-1 text-xs rounded-full transition-colors duration-150 flex-shrink-0 ${selectedIndex === index ? 'bg-blue-200 text-blue-800' : 'bg-gray-100 text-gray-600 group-hover:bg-blue-200 group-hover:text-blue-800'}`}>
+                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full transition-colors duration-150 flex-shrink-0 ${selectedIndex === index ? 'bg-blue-200 text-blue-800' : 'bg-gray-100 text-gray-600 group-hover:bg-blue-200 group-hover:text-blue-800'}`}>
                     {suggestion.count}
                   </span>
                 )}
               </button>
             ))}
+            
+            {/* Show spell suggestion if available and no regular suggestions */}
+            {useInstant && showSpellSuggestion && suggestions.length === 0 && spellCheck.suggestion && (
+              <div className="px-3 py-2 text-sm text-gray-600 border-b border-gray-100 spell-suggestion">
+                Did you mean: 
+                <button
+                  type="button"
+                  onClick={() => handleSpellSuggestionClick(spellCheck.suggestion!)}
+                  className="ml-1 spell-suggestion-link"
+                >
+                  {spellCheck.suggestion}
+                </button>
+                ?
+              </div>
+            )}
           </div>
         )}
 

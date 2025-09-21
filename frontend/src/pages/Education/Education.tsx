@@ -67,7 +67,10 @@ const Education: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       
-      <ListHeader totalResources={stats?.total_resources} />
+      <ListHeader 
+        totalResources={stats?.total_resources} 
+        searchQuery={filters.searchQuery}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col lg:flex-row gap-6">

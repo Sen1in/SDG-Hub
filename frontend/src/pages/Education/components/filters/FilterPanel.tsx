@@ -28,16 +28,23 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     <div className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
       
       <AutocompleteSearchBar
+        variant="filter"
         value={filters.searchQuery}
         onChange={(value) => onUpdateFilter('searchQuery', value)}
-        onSearch={(query: string) => {
-          onUpdateFilter('searchQuery', query);
+        onSearch={(searchQuery: string) => {
+          onUpdateFilter('searchQuery', searchQuery);
           onSearch();
         }}
+        onSuggestionClick={(suggestion) => {
+          onUpdateFilter('searchQuery', suggestion.term);
+          onSearch();
+        }}
+        enableInstantSearch={true}
+        instantSearchType="education"
         config={{
           placeholder: "Search education...",
           minInputLength: 2,
-          maxSuggestions: 5,
+          maxSuggestions: 8,
           showCount: true
         }}
         label="Search Resources"

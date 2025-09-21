@@ -106,7 +106,23 @@ class EducationListView(generics.ListAPIView):
         if industry:
             queryset = queryset.filter(useful_for_which_industries__icontains=industry)
         
-        return queryset.distinct()
+        # Apply unified ranking for Education: year DESC → title ASC
+        # Handle year field that might be string or null
+        queryset = queryset.extra(
+            select={
+                'year_numeric': """
+                    CASE 
+                        WHEN Year IS NOT NULL AND Year != '' AND Year REGEXP '^[0-9]+$' 
+                        THEN CAST(Year AS UNSIGNED)
+                        WHEN Year IS NOT NULL AND Year != '' 
+                        THEN CAST(SUBSTRING(Year, 1, 4) AS UNSIGNED)
+                        ELSE 0 
+                    END
+                """
+            }
+        ).order_by('-year_numeric', 'title').distinct()
+        
+        return queryset
 
 class EducationDetailView(generics.RetrieveAPIView):
     """Education Resource Details APIEducation Resource Details API"""
