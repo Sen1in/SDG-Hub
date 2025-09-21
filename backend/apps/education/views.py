@@ -2,7 +2,8 @@ from rest_framework import generics, status, filters
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Case, When, Value, CharField, TextField
+from django.db.models.functions import Replace
 from django.http import JsonResponse
 import re
 from rest_framework.views import APIView
@@ -17,6 +18,17 @@ from .serializers import (
     EducationDbListSerializer,
     EducationSearchSerializer
 )
+
+def get_sort_key(title):
+    """Custom sorting function to handle non-alphabetic characters at the beginning of titles"""
+    if not title:
+        return 'zzz'
+    
+    # Remove leading non-alphabetic characters
+    cleaned = re.sub(r'^[^A-Za-z]*', '', title)
+    if cleaned:
+        return cleaned[0].upper()
+    return 'zzz'
 
 class EducationPagination(PageNumberPagination):
     """Custom pagination"""
@@ -65,21 +77,22 @@ class EducationListView(generics.ListAPIView):
         # SDG filtering - Complex logic based on the master project
         sdg = self.request.query_params.getlist('sdg')
         if sdg:
-            sdg_query = Q()
             for sdg_num in sdg:
                 if sdg_num.isdigit():
-                    # Use the SDG matching logic of the master project
-                    sdg_int = int(sdg_num)
-                    if sdg_int == 1:
-                        sdg_query |= Q(sdgs_related__startswith='1,') | Q(sdgs_related__exact='1')
-                    elif sdg_int < 10:
-                        sdg_query |= Q(sdgs_related__contains=f',{sdg_num},') | Q(sdgs_related__endswith=f',{sdg_num}')
-                    else:
-                        sdg_query |= Q(sdgs_related__contains=str(sdg_num))
-                    
-                    sdg_query |= Q(sdgs_related__contains='18')
-            
-            queryset = queryset.filter(sdg_query)
+                    queryset = queryset.annotate(
+                        sdgs_no_space=Replace(
+                            'sdgs_related', 
+                            Value(' '), 
+                            Value(''), 
+                            output_field=TextField()
+                        )
+                    ).filter(
+                        Q(sdgs_no_space__exact=sdg_num) |
+                        Q(sdgs_no_space__startswith=f'{sdg_num},') |
+                        Q(sdgs_no_space__contains=f',{sdg_num},') |
+                        Q(sdgs_no_space__endswith=f',{sdg_num}') |
+                        Q(sdgs_no_space__contains='18')
+                    )
         
         # Year filtering
         year = self.request.query_params.getlist('year')
@@ -105,6 +118,15 @@ class EducationListView(generics.ListAPIView):
         industry = self.request.query_params.get('industry', None)
         if industry:
             queryset = queryset.filter(useful_for_which_industries__icontains=industry)
+        
+        queryset = queryset.annotate(
+            first_letter=Case(
+                When(title__regex=r'^[0-9]', then=Value('9_')), 
+                When(title__regex=r'^[^A-Za-z0-9]', then=Value('Z_')),
+                default=Value(''),
+                output_field=CharField()
+            )
+        ).order_by('first_letter', 'title')
         
         return queryset.distinct()
 
@@ -219,7 +241,7 @@ def education_by_sdg(request, sdg_number):
     # Incorporating projects that support all of the SDGs
     sdg_query |= Q(sdgs_related__contains='18')
     
-    queryset = queryset.filter(sdg_query)
+    queryset = queryset.filter(sdg_query).order_by('title')
     
     paginator = EducationPagination()
     page = paginator.paginate_queryset(queryset, request)
