@@ -112,7 +112,7 @@ class FormContentSerializer(serializers.ModelSerializer):
         elif form_type == 'action':
             return common_fields + [
                 'actions', 'action_detail', 'level', 'individual_organization',
-                'location_specific', 'related_industry', 'digital_actions',
+                'related_industry', 'digital_actions',
                 'source_descriptions', 'award', 'source_links', 
                 'additional_notes', 'award_descriptions'
             ]

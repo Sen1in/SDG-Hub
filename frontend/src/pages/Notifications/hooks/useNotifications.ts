@@ -1,5 +1,3 @@
-// src/pages/Notifications/hooks/useNotifications.ts
-
 import { useState, useEffect, useCallback } from 'react';
 import { notificationApiService } from '../utils/utils';
 import type { NotificationResponse } from '../types';
@@ -58,6 +56,26 @@ export const useNotifications = () => {
     }
   }, []);
 
+  // New function to accept form review requests
+  const acceptReviewRequest = useCallback(async (notificationId: string) => {
+    try {
+      const result = await notificationApiService.acceptReviewRequest(notificationId);
+      // Update local state
+      setNotifications(prev => 
+        prev.map(notification => 
+          notification.id === notificationId 
+            ? { ...notification, status: 'accepted' }
+            : notification
+        )
+      );
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to accept review request';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }, []);
+
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
       await notificationApiService.markAsRead(notificationId);
@@ -103,6 +121,7 @@ export const useNotifications = () => {
     refetch: fetchNotifications,
     acceptInvitation,
     rejectInvitation,
+    acceptReviewRequest, // New function
     markAsRead,
     deleteNotification,
     clearError,

@@ -6,6 +6,9 @@ from django.db import transaction
 class Notification(models.Model):
     NOTIFICATION_TYPES = [
         ('team_invitation', 'Team Invitation'),
+        ('form_review_request', 'Form Review Request'),
+        ('form_review_completed', 'Form Review Completed'),
+        ('form_review_status_update', 'Form Review Status Update'),
     ]
     
     STATUS_CHOICES = [
@@ -13,6 +16,7 @@ class Notification(models.Model):
         ('accepted', 'Accepted'),
         ('rejected', 'Rejected'),
         ('expired', 'Expired'),
+        ('completed', 'Completed'),
     ]
     
     recipient = models.ForeignKey(

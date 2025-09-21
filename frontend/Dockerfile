@@ -25,6 +25,9 @@ RUN apk add --no-cache openssl curl
 # Copy the build results to nginx
 COPY --from=build /app/build /usr/share/nginx/html
 
+# Copy the maintenance page
+COPY maintenance.html /usr/share/nginx/html/
+
 # Copy the nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

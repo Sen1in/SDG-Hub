@@ -25,7 +25,6 @@ export interface FormContent {
   action_detail?: string;
   level?: number;
   individual_organization?: number;
-  location_specific?: string;
   related_industry?: string;
   digital_actions?: boolean;
   source_descriptions?: string;

@@ -19,4 +19,5 @@ urlpatterns = [
 
     path('convert-invitations/', views.convert_email_invitations, name='convert-email-invitations'),
 
+    path('accept-review/', views.accept_review_request, name='accept-review-request'),
 ]

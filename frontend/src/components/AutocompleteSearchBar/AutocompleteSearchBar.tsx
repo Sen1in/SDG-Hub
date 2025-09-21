@@ -18,6 +18,11 @@ interface ExtendedAutocompleteSearchBarProps extends AutocompleteSearchBarProps 
   };
   enableInstantSearch?: boolean; // Enable instant search mode
   instantSearchType?: 'all' | 'action' | 'education'; // Type of instant search
+
+  suggestions?: SearchSuggestion[];
+  isLoading?: boolean;
+  isOpen?: boolean;
+  error?: string | null;
 }
 
 export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps> = ({
@@ -32,7 +37,12 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
   variant = 'default',
   customStyles = {},
   enableInstantSearch = false,
-  instantSearchType = 'all'
+  instantSearchType = 'all',
+  // 外部传入的建议数据
+  suggestions: externalSuggestions,
+  isLoading: externalIsLoading,
+  isOpen: externalIsOpen,
+  error: externalError
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -75,10 +85,10 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
   const instantSearch = getInstantSearch();
   
   const {
-    suggestions,
-    isLoading,
-    isOpen,
-    error,
+    suggestions: internalSuggestions,
+    isLoading: internalIsLoading,
+    isOpen: internalIsOpen,
+    error: internalError,
     selectedIndex,
     handleKeyDown,
     closeSuggestions,
@@ -106,6 +116,12 @@ export const AutocompleteSearchBar: React.FC<ExtendedAutocompleteSearchBarProps>
     clearError: traditionalSearch.clearError,
     config: traditionalSearch.config
   } : traditionalSearch;
+
+  // 使用外部数据或内部Hook数据
+  const suggestions = externalSuggestions || internalSuggestions;
+  const isLoading = externalIsLoading !== undefined ? externalIsLoading : internalIsLoading;
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+  const error = externalError !== undefined ? externalError : internalError;
 
   const styleVariants = {
     default: {

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { trackSearch } from '../../services/tracker';
 import { AutocompleteSearchBar } from '../../components/AutocompleteSearchBar';
+import { useHomeSearch } from '../../hooks/useHomeSearch';
 import type { SearchSuggestion } from '../../types/autocomplete';
 
 // Define interface for popular search terms
@@ -23,13 +24,16 @@ const Home: React.FC = () => {
   const [hoveredGoal, setHoveredGoal] = useState<number | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // 使用联合搜索Hook
+  const { suggestions, isLoading, isOpen, error, clearError } = useHomeSearch(searchQuery);
   const [popularEdu, setPopularEdu] = useState<PopularItem[]>([]);
   const [popularAct, setPopularAct] = useState<PopularItem[]>([]);
   const [educationCount, setEducationCount] = useState<number>(3100);
   const [actionsCount, setActionsCount] = useState<number>(2200);
   const [keywordsCount, setKeywordsCount] = useState<number>(169);
 
-  // Fetch popular search terms
+  // Fetch popular search terms for display
   useEffect(() => {
     const fetchPopularTerms = async () => {
       setLoadingTerms(true);
@@ -173,7 +177,7 @@ const Home: React.FC = () => {
   const features = [
     {
       title: 'SDG Education Database',
-      description: 'Over 3,100 entries offering in-depth insights into SDG-related education.',
+      description: 'Thousands of entries offering in-depth insights into SDG-related education.',
       icon: '📖',
       count: `${educationCount.toLocaleString()}`,
       color: 'from-blue-500 to-blue-600',
@@ -181,7 +185,7 @@ const Home: React.FC = () => {
     },
     {
       title: 'SDG Action Database',
-      description: '2,200 curated items highlighting actionable SDG plans and real-world examples.',
+      description: 'A wealth of curated content highlighting actionable SDG plans and real-world examples.',
       icon: '🎯',
       count: `${actionsCount.toLocaleString()}`,
       color: 'from-green-500 to-green-600',
@@ -219,6 +223,8 @@ const Home: React.FC = () => {
     if (user?.id) {
       trackSearch(user.id.toString(), suggestion.term);
     }
+    
+    // 所有建议都跳转到联合搜索结果页面，与热门搜索词保持一致
     navigate(`/search?q=${encodeURIComponent(suggestion.term)}`);
   };
 
@@ -252,11 +258,15 @@ const Home: React.FC = () => {
                 onSuggestionClick={handleSuggestionClick}
                 enableInstantSearch={true}
                 config={{
-                  placeholder: "Search SDG Education, Actions, Keywords...",
+                  placeholder: "Search keywords, actions, education...",
                   minInputLength: 2,
                   maxSuggestions: 5,
-                  showCount: true
+                  showCount: false
                 }}
+                suggestions={suggestions}
+                isLoading={isLoading}
+                isOpen={isOpen}
+                error={error}
               />
             </div>
               
