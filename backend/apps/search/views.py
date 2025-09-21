@@ -52,7 +52,16 @@ def unified_search(request):
     else:
         sort_clause = "ORDER BY relevance DESC, LOWER(TRIM(title)) ASC"
 
-    # Fixed query to correctly handle keyword merging
+    # Prepare search parameters
+    if query:
+        search_terms = [term.strip() for term in query.split() if term.strip()]
+        boolean_query = ' '.join([f'+{term}*' for term in search_terms])
+        like_query = f"%{query}%"
+        exact_query = query.lower()
+        prefix_query = f"{query.lower()}%"
+    else:
+        boolean_query = like_query = exact_query = prefix_query = ''
+
     raw_query = f"""
         SELECT * FROM (
             SELECT
@@ -65,9 +74,14 @@ def unified_search(request):
                 `SDGs related` COLLATE utf8mb4_unicode_ci AS sdgs,
                 Location COLLATE utf8mb4_unicode_ci AS location,
                 'education' AS source,
-                MATCH(Title, descriptions) AGAINST (%s IN NATURAL LANGUAGE MODE) AS relevance
+                (MATCH(Title, descriptions) AGAINST (%s IN BOOLEAN MODE) * 10 +
+                 CASE WHEN LOWER(Title) = %s THEN 100 ELSE 0 END +
+                 CASE WHEN LOWER(Title) LIKE %s THEN 50 ELSE 0 END +
+                 CASE WHEN LOWER(descriptions) LIKE %s THEN 20 ELSE 0 END) AS relevance
             FROM education_db
-            WHERE MATCH(Title, descriptions) AGAINST (%s IN NATURAL LANGUAGE MODE)
+            WHERE MATCH(Title, descriptions) AGAINST (%s IN BOOLEAN MODE) > 0
+               OR LOWER(Title) LIKE %s
+               OR LOWER(descriptions) LIKE %s
 
             UNION ALL
 
@@ -85,9 +99,14 @@ def unified_search(request):
                 ` SDGs` COLLATE utf8mb4_unicode_ci AS sdgs,
                 `Location (specific actions/org onlyonly)` COLLATE utf8mb4_unicode_ci AS location,
                 'actions' AS source,
-                MATCH(Actions, `Action detail`) AGAINST (%s IN NATURAL LANGUAGE MODE) AS relevance
+                (MATCH(Actions, `Action detail`) AGAINST (%s IN BOOLEAN MODE) * 10 +
+                 CASE WHEN LOWER(Actions) = %s THEN 100 ELSE 0 END +
+                 CASE WHEN LOWER(Actions) LIKE %s THEN 50 ELSE 0 END +
+                 CASE WHEN LOWER(`Action detail`) LIKE %s THEN 20 ELSE 0 END) AS relevance
             FROM action_db
-            WHERE MATCH(Actions, `Action detail`) AGAINST (%s IN NATURAL LANGUAGE MODE)
+            WHERE MATCH(Actions, `Action detail`) AGAINST (%s IN BOOLEAN MODE) > 0
+               OR LOWER(Actions) LIKE %s
+               OR LOWER(`Action detail`) LIKE %s
 
             UNION ALL
 
@@ -101,9 +120,12 @@ def unified_search(request):
                 GROUP_CONCAT(DISTINCT CASE WHEN sdg_number IS NOT NULL AND sdg_number != '' THEN sdg_number END ORDER BY CAST(sdg_number AS UNSIGNED) SEPARATOR ', ') COLLATE utf8mb4_unicode_ci AS sdgs,
                 '' AS location,
                 'keywords' AS source,
-                MAX(MATCH(keyword) AGAINST (%s IN NATURAL LANGUAGE MODE)) AS relevance
+                MAX(MATCH(keyword) AGAINST (%s IN BOOLEAN MODE) * 10 +
+                    CASE WHEN LOWER(keyword) = %s THEN 100 ELSE 0 END +
+                    CASE WHEN LOWER(keyword) LIKE %s THEN 50 ELSE 0 END) AS relevance
             FROM keyword_resources
-            WHERE MATCH(keyword) AGAINST (%s IN NATURAL LANGUAGE MODE)
+            WHERE MATCH(keyword) AGAINST (%s IN BOOLEAN MODE) > 0
+               OR LOWER(keyword) LIKE %s
             GROUP BY keyword
         ) AS combined
         {where_clause}
@@ -111,7 +133,6 @@ def unified_search(request):
         LIMIT %s OFFSET %s
     """
 
-    # Fixed count query accordingly
     count_query = f"""
         SELECT COUNT(*) FROM (
             SELECT
@@ -121,7 +142,9 @@ def unified_search(request):
                 Location COLLATE utf8mb4_unicode_ci AS location,
                 'education' AS source
             FROM education_db
-            {"WHERE MATCH(Title, descriptions) AGAINST (%s IN NATURAL LANGUAGE MODE)" if query else ""}
+            WHERE MATCH(Title, descriptions) AGAINST (%s IN BOOLEAN MODE) > 0
+               OR LOWER(Title) LIKE %s
+               OR LOWER(descriptions) LIKE %s
 
             UNION ALL
 
@@ -132,7 +155,9 @@ def unified_search(request):
                 `Location (specific actions/org onlyonly)` COLLATE utf8mb4_unicode_ci AS location,
                 'actions' AS source
             FROM action_db
-            {"WHERE MATCH(Actions, `Action detail`) AGAINST (%s IN NATURAL LANGUAGE MODE)" if query else ""}
+            WHERE MATCH(Actions, `Action detail`) AGAINST (%s IN BOOLEAN MODE) > 0
+               OR LOWER(Actions) LIKE %s
+               OR LOWER(`Action detail`) LIKE %s
 
             UNION ALL
 
@@ -143,36 +168,50 @@ def unified_search(request):
                 '' AS location,
                 'keywords' AS source
             FROM keyword_resources
-            {"WHERE MATCH(keyword) AGAINST (%s IN NATURAL LANGUAGE MODE)" if query else ""}
+            WHERE MATCH(keyword) AGAINST (%s IN BOOLEAN MODE) > 0
+               OR LOWER(keyword) LIKE %s
             GROUP BY keyword
         ) AS combined
         {where_clause}
     """
 
-    main_params = [query] * 6 if query else [''] * 6
-    count_params = [query] * 3 if query else [''] * 3
+    # Build parameters arrays
+    if query:
+        # Education: 7 params (4 relevance + 3 search)
+        education_params = [boolean_query, exact_query, prefix_query, like_query, boolean_query, like_query, like_query]
+        # Actions: 7 params (4 relevance + 3 search)  
+        actions_params = [boolean_query, exact_query, prefix_query, like_query, boolean_query, like_query, like_query]
+        # Keywords: 5 params (3 relevance + 2 search)
+        keywords_params = [boolean_query, exact_query, prefix_query, boolean_query, like_query]
+        
+        # Count query params
+        count_education_params = [boolean_query, like_query, like_query]
+        count_actions_params = [boolean_query, like_query, like_query]
+        count_keywords_params = [boolean_query, like_query]
+    else:
+        education_params = [''] * 7
+        actions_params = [''] * 7
+        keywords_params = [''] * 5
+        count_education_params = [''] * 3
+        count_actions_params = [''] * 3
+        count_keywords_params = [''] * 2
 
-    main_params += filter_params + [size, offset]
-    count_params += filter_params
+    main_params = education_params + actions_params + keywords_params + filter_params + [size, offset]
+    count_params = count_education_params + count_actions_params + count_keywords_params + filter_params
 
     with connection.cursor() as cursor:
         cursor.execute(raw_query, main_params)
         columns = [col[0] for col in cursor.description]
         raw_results = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-        # Process SDG data according to correct field mapping
+        # Process SDG data
         for r in raw_results:
-            # For 'keywords' source, organization field stores target_code, and sdgs field stores sdg_number
             if r.get('source') == 'keywords':
-                # Process organization field (target_code - SDG target codes like 3.9, 7.1, 7.2)
                 if 'organization' in r and r['organization']:
                     if isinstance(r['organization'], str):
-                        # Clean and sort SDG target codes
                         targets = [target.strip() for target in r['organization'].split(',') if target.strip()]
-                        # Sort SDG targets numerically
                         def target_sort_key(target_str):
                             try:
-                                # Handle formats like "7.A", "7.B"
                                 if '.' in target_str:
                                     parts = target_str.split('.')
                                     major = int(parts[0])
@@ -180,29 +219,26 @@ def unified_search(request):
                                     if minor_part.isdigit():
                                         minor = int(minor_part)
                                     else:
-                                        # For letter suffixes, convert to numbers (A=100, B=101, etc.)
                                         minor = ord(minor_part.upper()) - ord('A') + 100
                                     return (major, minor)
                                 else:
                                     return (int(target_str), 0)
                             except:
-                                return (999, 999)  # Invalid formats go to the end
+                                return (999, 999)
                         
                         r['organization'] = ', '.join(sorted(set(targets), key=target_sort_key))
                 
-                # Process sdgs field (sdg_number - main SDG numbers like 3, 7, 8) and create sdgs_list
                 if 'sdgs' in r and isinstance(r['sdgs'], str):
                     sdg_str = r['sdgs'].strip()
                     if sdg_str == '18':
                         r['sdgs_list'] = list(range(1, 18))
                     elif sdg_str:
-                        # Handle comma-separated SDG numbers
                         sdg_numbers = []
                         for s in re.split(r'[,\s]+', sdg_str):
                             s = s.strip()
                             if s.isdigit():
                                 num = int(s)
-                                if 1 <= num <= 17:  # Valid SDG range
+                                if 1 <= num <= 17:
                                     sdg_numbers.append(num)
                         r['sdgs_list'] = sorted(list(set(sdg_numbers)))
                     else:
@@ -211,18 +247,16 @@ def unified_search(request):
                     r['sdgs_list'] = []
                     
             else:
-                # For education and actions sources, keep original logic
                 if 'sdgs' in r and isinstance(r['sdgs'], str):
                     sdg_str = r['sdgs'].strip()
                     if sdg_str == '18':
                         r['sdgs_list'] = list(range(1, 18))
                     elif sdg_str:
-                        # Handle comma-separated SDG numbers and remove duplicates
                         sdg_numbers = []
                         for s in re.findall(r'\d+', sdg_str):
                             if s.isdigit():
                                 num = int(s)
-                                if 1 <= num <= 17:  # Valid SDG range
+                                if 1 <= num <= 17:
                                     sdg_numbers.append(num)
                         r['sdgs_list'] = sorted(list(set(sdg_numbers)))
                     else:
@@ -230,7 +264,6 @@ def unified_search(request):
                 else:
                     r['sdgs_list'] = []
                 
-                # Clean organization field, removing empty values and 'None'
                 if 'organization' in r and r['organization']:
                     if isinstance(r['organization'], str):
                         orgs = [org.strip() for org in r['organization'].split(',') if org.strip() and org.strip().lower() != 'none']
@@ -254,6 +287,7 @@ def unified_search(request):
         'debug_info': {
             'query_used': query,
             'filters_applied': len(filters),
-            'total_results': len(results)
+            'total_results': len(results),
+            'boolean_query': boolean_query if query else 'none'
         }
     })
