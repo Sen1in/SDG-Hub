@@ -47,7 +47,6 @@ class FormApiService {
       throw new Error(errorData.error || errorData.detail || `HTTP ${response.status}`);
     }
 
- 
     if (response.status === 204 || response.headers.get('content-length') === '0') {
       return null;
     }
@@ -56,7 +55,6 @@ class FormApiService {
     if (contentType && contentType.includes('application/json')) {
       return response.json();
     }
-
 
     const text = await response.text();
     return text ? { message: text } : null;
@@ -78,7 +76,6 @@ class FormApiService {
     hasNext: boolean;
     hasPrevious: boolean;
   }> {
-    // Construct query parameters
     const params = new URLSearchParams({
       page: page.toString(),
       page_size: pageSize.toString(),
@@ -91,7 +88,6 @@ class FormApiService {
     const url = `/team/${teamId}/forms/?${params.toString()}`;
     const data: PaginatedResponse<any> = await this.fetchWithAuth(url);
     
-    // Handling paginated data
     const formsArray = data.results || [];
     const totalCount = data.count || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
@@ -147,7 +143,7 @@ class FormApiService {
   }
 
   // Create a form
-  async createForm(teamId: string, formData: CreateFormRequest): Promise<TeamForm> {
+  async createTeamForm(teamId: string, formData: CreateFormRequest): Promise<TeamForm> {
     const payload = {
       title: formData.title,
       description: formData.description,
@@ -188,7 +184,130 @@ class FormApiService {
     };
   }
 
-  // 更新表单
+  // Get personal forms (with support for pagination and search)
+  async getPersonalForms(
+    page: number = 1, 
+    pageSize: number = 20,
+    search?: string,
+    status?: string,
+    type?: string
+  ): Promise<{
+    forms: TeamForm[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+  }> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString(),
+    });
+
+    if (search) params.append('search', search);
+    if (status && status !== 'all') params.append('status', status);
+    if (type && type !== 'all') params.append('type', type);
+
+    const url = `/forms/personal/?${params.toString()}`;
+    const data: PaginatedResponse<any> = await this.fetchWithAuth(url);
+    
+    const formsArray = data.results || [];
+    const totalCount = data.count || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    
+    const forms: TeamForm[] = formsArray.map((form: any) => ({
+      id: form.id.toString(),
+      title: form.title || '',
+      description: form.description || '',
+      type: form.type,
+      status: form.status,
+      teamId: null,
+      createdBy: form.created_by_username || '',
+      createdAt: form.created_at || new Date().toISOString(),
+      updatedAt: form.updated_at || new Date().toISOString(),
+      lastModifiedBy: form.last_modified_by_username,
+      responseCount: form.response_count || 0,
+      isTemplate: form.is_template || false,
+      permission: form.permission || 'admin',
+      settings: {
+        allowAnonymous: form.allow_anonymous || false,
+        allowMultipleSubmissions: form.allow_multiple_submissions || false,
+        requireLogin: form.require_login !== false,
+        isPublic: form.is_public || false,
+        deadline: form.deadline,
+      }
+    }));
+
+    return {
+      forms,
+      totalCount,
+      totalPages,
+      currentPage: page,
+      hasNext: !!data.next,
+      hasPrevious: !!data.previous
+    };
+  }
+
+  // Get personal form statistics
+  async getPersonalFormStats(): Promise<FormStats> {
+    const data = await this.fetchWithAuth('/forms/personal/stats/');
+    
+    return {
+      totalForms: data.total_forms || 0,
+      activeForms: data.active_forms || 0,
+      lockedForms: data.locked_forms || 0,
+      formsByType: {
+        action: data.forms_by_type?.action || 0,
+        education: data.forms_by_type?.education || 0,
+        blank: data.forms_by_type?.blank || 0,
+        ida: data.forms_by_type?.ida || 0,
+      }
+    };
+  }
+
+  // Create personal form
+  async createPersonalForm(formData: CreateFormRequest): Promise<TeamForm> {
+    const payload = {
+      title: formData.title,
+      description: formData.description,
+      type: formData.type,
+      status: 'active',
+      allow_anonymous: formData.settings?.allowAnonymous || false,
+      allow_multiple_submissions: formData.settings?.allowMultipleSubmissions || false,
+      require_login: formData.settings?.requireLogin || true,
+      is_public: formData.settings?.isPublic || false,
+      deadline: formData.settings?.deadline,
+    };
+
+    const data = await this.fetchWithAuth('/forms/personal/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      id: data.id.toString(),
+      title: data.title,
+      description: data.description,
+      type: data.type,
+      status: data.status,
+      teamId: null,
+      createdBy: 'current-user',
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      responseCount: 0,
+      isTemplate: data.is_template,
+      permission: data.permission,
+      settings: {
+        allowAnonymous: data.allow_anonymous,
+        allowMultipleSubmissions: data.allow_multiple_submissions,
+        requireLogin: data.require_login,
+        isPublic: data.is_public,
+        deadline: data.deadline,
+      }
+    };
+  }
+
+  // Update the form
   async updateForm(formId: string, updates: UpdateFormRequest): Promise<void> {
     const payload: any = {};
     
@@ -235,7 +354,7 @@ class FormApiService {
       description: data.form.description,
       type: data.form.type,
       status: data.form.status,
-      teamId: data.form.team_id?.toString() || '',
+      teamId: data.form.team_id?.toString() || null,
       createdBy: data.form.created_by_username,
       createdAt: data.form.created_at,
       updatedAt: data.form.updated_at,
@@ -384,11 +503,11 @@ export const useTeamForms = (teamId: string | undefined) => {
     stats,
     team,
     
-    // Status
+    // State
     isLoading,
     error,
     
-    // Paganation
+    // Pagination
     currentPage,
     totalPages,
     totalCount,
@@ -401,7 +520,127 @@ export const useTeamForms = (teamId: string | undefined) => {
     statusFilter,
     typeFilter,
     
-    // Operation function
+    // Operation functions
+    refetch,
+    clearError,
+    goToPage,
+    goToNextPage,
+    goToPreviousPage,
+    applyFilters,
+  };
+};
+
+/**
+ * Personal Form Management Hook - Supports Pagination
+ */
+export const usePersonalForms = () => {
+  const [forms, setForms] = useState<TeamForm[]>([]);
+  const [stats, setStats] = useState<FormStats | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [pageSize] = useState<number>(20);
+  const [hasNext, setHasNext] = useState<boolean>(false);
+  const [hasPrevious, setHasPrevious] = useState<boolean>(false);
+
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+
+  const fetchPersonalForms = useCallback(async (
+    page: number = 1,
+    search?: string,
+    status?: string,
+    type?: string
+  ) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const [formsResponse, statsData] = await Promise.all([
+        formApiService.getPersonalForms(page, pageSize, search, status, type),
+        formApiService.getPersonalFormStats()
+      ]);
+      
+      setForms(formsResponse.forms);
+      setCurrentPage(formsResponse.currentPage);
+      setTotalPages(formsResponse.totalPages);
+      setTotalCount(formsResponse.totalCount);
+      setHasNext(formsResponse.hasNext);
+      setHasPrevious(formsResponse.hasPrevious);
+      
+      setStats(statsData);
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch personal forms');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [pageSize]);
+
+  const goToPage = useCallback((page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      fetchPersonalForms(page, searchQuery, statusFilter, typeFilter);
+    }
+  }, [totalPages, searchQuery, statusFilter, typeFilter, fetchPersonalForms]);
+
+  const goToNextPage = useCallback(() => {
+    if (hasNext && currentPage < totalPages) {
+      goToPage(currentPage + 1);
+    }
+  }, [hasNext, currentPage, totalPages, goToPage]);
+
+  const goToPreviousPage = useCallback(() => {
+    if (hasPrevious && currentPage > 1) {
+      goToPage(currentPage - 1);
+    }
+  }, [hasPrevious, currentPage, goToPage]);
+
+  const applyFilters = useCallback((
+    search: string,
+    status: string,
+    type: string
+  ) => {
+    setSearchQuery(search);
+    setStatusFilter(status);
+    setTypeFilter(type);
+    setCurrentPage(1); 
+    fetchPersonalForms(1, search, status, type);
+  }, [fetchPersonalForms]);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const refetch = useCallback(() => {
+    fetchPersonalForms(currentPage, searchQuery, statusFilter, typeFilter);
+  }, [fetchPersonalForms, currentPage, searchQuery, statusFilter, typeFilter]);
+
+  useEffect(() => {
+    fetchPersonalForms(1); 
+  }, [pageSize]);
+
+  return {
+    forms,
+    stats,
+    
+    isLoading,
+    error,
+    
+    currentPage,
+    totalPages,
+    totalCount,
+    pageSize,
+    hasNext,
+    hasPrevious,
+    
+    searchQuery,
+    statusFilter,
+    typeFilter,
+    
     refetch,
     clearError,
     goToPage,
@@ -423,7 +662,14 @@ export const useCreateForm = () => {
       setIsLoading(true);
       setError(null);
       
-      const newForm = await formApiService.createForm(formData.teamId, formData);
+      let newForm: TeamForm;
+      
+      if (formData.teamId) {
+        newForm = await formApiService.createTeamForm(formData.teamId, formData);
+      } else {
+        newForm = await formApiService.createPersonalForm(formData);
+      }
+      
       return newForm;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create form';
@@ -528,3 +774,6 @@ export const useFormManagement = () => {
     clearError,
   };
 };
+
+// 导出API服务实例，供其他组件使用
+export { formApiService };

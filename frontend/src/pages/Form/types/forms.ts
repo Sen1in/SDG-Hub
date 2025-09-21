@@ -27,7 +27,7 @@ export enum FormType {
     description?: string;
     type: FormType;
     status: FormStatus;
-    teamId: string;
+    teamId: string | null;
     createdBy: string;
     createdAt: string;
     updatedAt: string;
@@ -52,7 +52,7 @@ export enum FormType {
     title: string;
     description?: string;
     type: FormType;
-    teamId: string;
+    teamId?: string;
     settings?: Partial<FormSettings>;
   }
   
@@ -109,6 +109,7 @@ export enum FormType {
     onSuccess: (formData: CreateFormRequest) => Promise<void>;
     teamId: string;
     isLoading?: boolean;
+    isPersonal?: boolean;
   }
   
   // Form statistics information
@@ -123,3 +124,13 @@ export enum FormType {
       ida: number;
     };
   }
+
+  // Personal form specific types
+export interface PersonalForm extends Omit<TeamForm, 'teamId'> {
+  teamId: null;
+}
+
+// Utility type to check if form is personal
+export type FormWithTeamInfo = TeamForm & {
+  isPersonal: boolean;
+};

@@ -235,6 +235,13 @@ class FormCollaborationConsumer(AsyncWebsocketConsumer):
             
             form = Form.objects.get(id=self.form_id)
             
+            # Personal forms: only creator can access
+            if form.team is None:
+                has_permission = form.created_by_id == user_id
+                if not has_permission:
+                    print(f"Permission denied: User {user_id} is not the creator of personal form {self.form_id}")
+                return has_permission
+
             # Use the user ID instead of the user object
             membership = TeamMembership.objects.filter(
                 user_id=user_id,

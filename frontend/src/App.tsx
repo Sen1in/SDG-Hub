@@ -98,6 +98,7 @@ function App() {
             <Route path="/team/:teamId/forms" element={<TeamForms />} />
             <Route path="/team/:teamId/forms/:formId" element={<CollaborativeForm />} />
             <Route path="/team/:teamId/forms/:formId/review" element={<FormReviewInterface />} />
+            <Route path="/forms/:formId" element={<CollaborativeForm />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/liked" element={<LikedPage />} />
             <Route path="/data-management" element={<DataManagement />} />

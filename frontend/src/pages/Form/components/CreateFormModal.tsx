@@ -8,6 +8,7 @@ interface CreateFormModalProps {
   onSuccess: (formData: CreateFormRequest) => Promise<void>;
   teamId: string;
   isLoading?: boolean;
+  isPersonal?: boolean; // New prop to identify personal forms
 }
 
 const CreateFormModal: React.FC<CreateFormModalProps> = ({
@@ -15,7 +16,8 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
   onClose,
   onSuccess,
   teamId,
-  isLoading = false
+  isLoading = false,
+  isPersonal = false // New prop
 }) => {
   const [selectedType, setSelectedType] = useState<FormType | null>(null);
   const [formTitle, setFormTitle] = useState<string>('');
@@ -26,8 +28,8 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
   const formTypes = [
     {
       type: FormType.ACTION,
-      title: 'Action Item Form',
-      description: 'Create and add a SDG Action item to our Action database.',
+      title: 'Action Form',
+      description: ' Submit and track SDG-related actions, initiatives, and projects to contribute to our community action database.',
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -38,8 +40,8 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
     },
     {
       type: FormType.EDUCATION,
-      title: 'Education Item Form',
-      description: 'Create and add a SDG Education item to our Education database.',
+      title: 'Education Form',
+      description: 'Create and submit educational content, resources, and learning materials to enrich our knowledge database.',
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -74,7 +76,7 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
     } 
   ];
 
-  // Obtain color styles
+  // Get color styles
   const getColorClasses = (color: string, isSelected: boolean) => {
     const baseClasses = 'border-2 rounded-lg transition-all duration-200 cursor-pointer';
     
@@ -117,7 +119,7 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
     }
   };
 
-  // Verification form
+  // Form validation
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
 
@@ -141,7 +143,7 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Processing form submission
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -156,7 +158,7 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
         title: formTitle.trim(),
         description: formDescription.trim() || undefined,
         type: selectedType!,
-        teamId,
+        teamId: isPersonal ? undefined : teamId,
         settings: {
           allowAnonymous: false,
           allowMultipleSubmissions: false,
@@ -178,7 +180,7 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
     }
   };
 
-  // Close the modal box and reset the form
+  // Close modal and reset form
   const handleClose = () => {
     if (isLoading) return;
     
@@ -189,14 +191,14 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
     onClose();
   };
 
-  // Handling the ESC key to close
+  // Handle ESC key to close
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape' && !isLoading) {
       handleClose();
     }
   };
 
-  // If the modal box is not opened, no content will be rendered.
+  // Return null if modal is not open
   if (!isOpen) {
     return null;
   }
@@ -210,9 +212,11 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
     >
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          {/* Modal box header */}
+          {/* Modal header */}
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Create New Form</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {isPersonal ? 'Create Personal Form' : 'Create New Form'}
+            </h2>
             <button
               onClick={handleClose}
               disabled={isLoading}
@@ -283,7 +287,7 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
               )}
             </div>
 
-            {/* Title */}
+            {/* Form title */}
             <div>
               <label htmlFor="formTitle" className="block text-sm font-medium text-gray-700 mb-2">
                 Form Title <span className="text-red-500">*</span>
@@ -316,7 +320,7 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
               </p>
             </div>
 
-            {/* description */}
+            {/* Form description */}
             <div>
               <label htmlFor="formDescription" className="block text-sm font-medium text-gray-700 mb-2">
                 Description (Optional)
@@ -348,7 +352,7 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
               </p>
             </div>
 
-            {/* Submit error message */}
+            {/* Submit error display */}
             {errors.submit && (
               <div className="p-4 bg-red-50 border-l-4 border-red-400 rounded-lg">
                 <div className="flex">
@@ -364,7 +368,7 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
               </div>
             )}
 
-            {/* Operation button */}
+            {/* Action buttons */}
             <div className="flex space-x-3 pt-4">
               <button
                 type="button"

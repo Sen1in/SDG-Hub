@@ -142,3 +142,35 @@ class FormEditHistorySerializer(serializers.ModelSerializer):
         model = FormEditHistory
         fields = ['id', 'user_name', 'field_name', 'old_value', 'new_value',
                  'change_type', 'timestamp', 'version']
+        
+class CreatePersonalFormSerializer(serializers.ModelSerializer):
+    """Create Personal Form Serializer"""
+    response_count = serializers.ReadOnlyField()
+    permission = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Form
+        fields = [
+            'id', 'title', 'description', 'type', 'status',
+            'response_count', 'permission', 'is_template',
+            'allow_anonymous', 'allow_multiple_submissions', 'require_login', 'is_public',
+            'deadline', 'max_responses',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'response_count', 'created_at', 'updated_at']
+    
+    def get_permission(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.get_user_permission(request.user)
+        return None
+    
+    def create(self, validated_data):
+        """Create a personal form"""
+        request = self.context.get('request')
+        
+        validated_data['created_by'] = request.user
+        validated_data['last_modified_by'] = request.user
+        validated_data['team'] = None
+        
+        return super().create(validated_data)
