@@ -2,7 +2,8 @@ from rest_framework import generics, status, filters
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Case, When, Value, CharField, TextField
+from django.db.models.functions import Replace
 from django.http import JsonResponse
 import re
 from rest_framework import generics, status
@@ -21,6 +22,17 @@ from .serializers import (
     ActionDbListSerializer,
     ActionSearchSerializer
 )
+
+def get_sort_key(actions):
+    """Custom sorting function to handle non-alphabetic characters at the beginning of titles"""
+    if not actions:
+        return 'zzz'
+    
+    # Remove leading non-alphabetic characters
+    cleaned = re.sub(r'^[^A-Za-z]*', '', actions)
+    if cleaned:
+        return cleaned[0].upper()
+    return 'zzz'
 
 class ActionPagination(PageNumberPagination):
     page_size = 20
@@ -64,20 +76,22 @@ class ActionListView(generics.ListAPIView):
         # SDG Filtering
         sdg = self.request.query_params.getlist('sdg')
         if sdg:
-            sdg_query = Q()
             for sdg_num in sdg:
                 if sdg_num.isdigit():
-                    sdg_int = int(sdg_num)
-                    if sdg_int == 1:
-                        sdg_query |= Q(field_sdgs__startswith='1,') | Q(field_sdgs__exact='1')
-                    elif sdg_int < 10:
-                        sdg_query |= Q(field_sdgs__contains=f',{sdg_num},') | Q(field_sdgs__endswith=f',{sdg_num}')
-                    else:
-                        sdg_query |= Q(field_sdgs__contains=str(sdg_num))
-                    
-                    sdg_query |= Q(field_sdgs__contains='18')
-            
-            queryset = queryset.filter(sdg_query)
+                    queryset = queryset.annotate(
+                        sdgs_no_space=Replace(
+                            'field_sdgs', 
+                            Value(' '), 
+                            Value(''), 
+                            output_field=TextField()
+                        )
+                    ).filter(
+                        Q(sdgs_no_space__exact=sdg_num) |
+                        Q(sdgs_no_space__startswith=f'{sdg_num},') |
+                        Q(sdgs_no_space__contains=f',{sdg_num},') |
+                        Q(sdgs_no_space__endswith=f',{sdg_num}') |
+                        Q(sdgs_no_space__contains='18')
+                    )
         
         # Level Filtering
         level = self.request.query_params.getlist('level')
@@ -124,6 +138,15 @@ class ActionListView(generics.ListAPIView):
         award = self.request.query_params.get('award', None)
         if award and award.isdigit():
             queryset = queryset.filter(award=int(award))
+
+        queryset = queryset.annotate(
+            first_letter=Case(
+                When(actions__regex=r'^[0-9]', then=Value('9_')), 
+                When(actions__regex=r'^[^A-Za-z0-9]', then=Value('Z_')),
+                default=Value(''),
+                output_field=CharField()
+            )
+        ).order_by('first_letter', '-award', 'actions')
         
         return queryset.distinct()
 
