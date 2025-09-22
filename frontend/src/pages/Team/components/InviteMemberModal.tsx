@@ -13,7 +13,6 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [showEmailWarning, setShowEmailWarning] = useState<boolean>(false);
 
-  // Form validation
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
 
@@ -36,9 +35,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
   const handleSubmit = async () => {
-    // 如果已经显示成功消息，则重置表单继续邀请
     if (successMessage) {
       setIdentifier('');
       setErrors({});
@@ -58,33 +55,26 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     try {
       const result = await onSuccess(identifier.trim(), inviteType);
       
-      // 根据不同类型的邀请结果显示不同的成功消息
       if (result && result.success) {
         if (result.type === 'email_sent' || result.emailSent) {
-          // 邮件发送成功
-          setSuccessMessage(`Invitation email sent successfully to ${identifier.trim()}!`);
+          setSuccessMessage(`Invitation email sent to ${identifier.trim()}`);
           setShowEmailWarning(true);
         } else if (result.type === 'notification_sent') {
-          // 系统内通知发送成功
           setSuccessMessage(`Invitation sent successfully to ${identifier.trim()}! They will receive a notification in the system.`);
           setShowEmailWarning(false);
         } else if (result.type === 'already_member') {
-          // 用户已经是成员
           setSuccessMessage(`${identifier.trim()} is already a member of this team.`);
           setShowEmailWarning(false);
         } else if (result.type === 'general_success') {
-          // 一般成功情况
           setSuccessMessage(result.message);
           setShowEmailWarning(result.emailSent || false);
         } else {
-          // 默认成功消息
           setSuccessMessage(`Invitation sent successfully to ${identifier.trim()}!`);
           setShowEmailWarning(false);
         }
       } else {
-        // 兼容旧的返回格式
         if (inviteType === 'email') {
-          setSuccessMessage(`Invitation email sent successfully to ${identifier.trim()}!`);
+          setSuccessMessage(`Invitation email sent to ${identifier.trim()}`);
           setShowEmailWarning(true);
         } else {
           setSuccessMessage(`Invitation sent successfully to ${identifier.trim()}!`);
@@ -105,7 +95,6 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     }
   };
 
-  // Close modal and reset form
   const handleClose = () => {
     if (isLoading) return;
     
@@ -117,7 +106,6 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     onClose();
   };
 
-  // Handle close after success message is shown
   const handleCloseAfterSuccess = () => {
     if (isLoading) return;
     
@@ -126,14 +114,12 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     }, 100);
   };
 
-  // Handle ESC key to close
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape' && !isLoading) {
       handleClose();
     }
   };
 
-  // Handle Enter key to submit
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isLoading && identifier.trim()) {
       e.preventDefault();
@@ -141,7 +127,6 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     }
   };
 
-  // Clear errors and success messages when switching invite type
   const handleTypeChange = (type: 'email' | 'username') => {
     setInviteType(type);
     setIdentifier('');
@@ -251,40 +236,23 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             </div>
 
             {successMessage && (
-              <div className="space-y-3">
-                <div className="p-4 bg-white border border-gray-200 rounded-lg">
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0 mr-3">
-                      <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-lg font-medium text-green-600 leading-tight">
-                        {successMessage}
-                      </p>
-                    </div>
-                  </div>
+              <div className="mt-3 space-y-3">
+                <div className="flex items-center gap-2 text-green-600">
+                  <span className="text-green-600">✉️</span>
+                  <p className="text-sm font-medium">
+                    {successMessage}
+                  </p>
                 </div>
                 
                 {showEmailWarning && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-start">
-                      <div className="flex-shrink-0 mr-3">
-                        <svg className="h-5 w-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5C2.962 18.333 3.924 20 5.464 20z" />
-                        </svg>
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-base font-medium text-blue-800 mb-2">
-                          Can't find the email?
-                        </h4>
-                        <ul className="text-sm text-blue-700 space-y-1">
-                          <li className="flex items-center">
-                            <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 flex-shrink-0"></span>
-                            Check your spam/junk folder
-                          </li>
-                        </ul>
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 text-sm">⚠️</span>
+                      <div className="text-sm text-blue-800 space-y-2">
+                        <p className="font-medium">Can't find the email?</p>
+                        <div className="space-y-1 text-blue-700">
+                          <p>• <strong>Check your spam/junk folder</strong></p>
+                        </div>
                       </div>
                     </div>
                   </div>
