@@ -218,6 +218,7 @@ class TeamApiService {
       body: JSON.stringify(payload),
     });
     
+    // 处理明确的成功响应
     if (response.success) {
       if (response.type === 'email_sent') {
         return {
@@ -233,16 +234,19 @@ class TeamApiService {
           type: 'notification_sent',
           message: response.message,
           emailSent: false,
-          member: response.notification ? {
-            id: response.notification.id,
-            username: response.notification.recipient,
-            email: '',
-            role: 'view' as const,
-            joinedAt: new Date().toISOString()
-          } : undefined,
+          member: response.member,
           notification: response.notification
         };
       }
+    }
+    
+    if (response.message && response.message.includes('already a member')) {
+      return {
+        success: true,
+        type: 'already_member',
+        message: response.message,
+        emailSent: false
+      };
     }
     
     if (response.member) {
@@ -255,6 +259,17 @@ class TeamApiService {
       };
     }
     
+    // 如果有 message 字段且没有明确的错误标识，视为成功
+    if (response.message) {
+      return {
+        success: true,
+        type: 'general_success',
+        message: response.message,
+        emailSent: type === 'email'
+      };
+    }
+    
+    // 默认返回
     return {
       success: true,
       type: 'unknown',

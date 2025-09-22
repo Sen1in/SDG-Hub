@@ -38,6 +38,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
 
   // Handle form submission
   const handleSubmit = async () => {
+    // 如果已经显示成功消息，则重置表单继续邀请
     if (successMessage) {
       setIdentifier('');
       setErrors({});
@@ -67,6 +68,14 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
           // 系统内通知发送成功
           setSuccessMessage(`Invitation sent successfully to ${identifier.trim()}! They will receive a notification in the system.`);
           setShowEmailWarning(false);
+        } else if (result.type === 'already_member') {
+          // 用户已经是成员
+          setSuccessMessage(`${identifier.trim()} is already a member of this team.`);
+          setShowEmailWarning(false);
+        } else if (result.type === 'general_success') {
+          // 一般成功情况
+          setSuccessMessage(result.message);
+          setShowEmailWarning(result.emailSent || false);
         } else {
           // 默认成功消息
           setSuccessMessage(`Invitation sent successfully to ${identifier.trim()}!`);
@@ -83,7 +92,6 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
         }
       }
       
-      // setIdentifier('');
       setErrors({}); 
     } catch (error) {
       let errorMessage = 'Failed to invite member. Please try again.';
@@ -244,32 +252,39 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
 
             {successMessage && (
               <div className="space-y-3">
-                <div className="p-4 bg-green-50 border-l-4 border-green-400 rounded-lg">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0 mr-3">
+                      <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-green-700 font-medium">{successMessage}</p>
+                    <div className="flex-1">
+                      <p className="text-lg font-medium text-green-600 leading-tight">
+                        {successMessage}
+                      </p>
                     </div>
                   </div>
                 </div>
                 
                 {showEmailWarning && (
-                  <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 mr-3">
+                        <svg className="h-5 w-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5C2.962 18.333 3.924 20 5.464 20z" />
                         </svg>
                       </div>
-                      <div className="ml-3">
-                        <p className="text-sm text-yellow-700 font-medium">Important Notice</p>
-                        <p className="text-sm text-yellow-700 mt-1">
-                          Please ask the recipient to check their spam/junk folder if they don't receive the invitation email within a few minutes.
-                        </p>
+                      <div className="flex-1">
+                        <h4 className="text-base font-medium text-blue-800 mb-2">
+                          Can't find the email?
+                        </h4>
+                        <ul className="text-sm text-blue-700 space-y-1">
+                          <li className="flex items-center">
+                            <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2 flex-shrink-0"></span>
+                            Check your spam/junk folder
+                          </li>
+                        </ul>
                       </div>
                     </div>
                   </div>

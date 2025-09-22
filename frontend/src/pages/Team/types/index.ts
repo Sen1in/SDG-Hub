@@ -102,9 +102,10 @@ export interface ManageCapacityModalProps {
   isLoading?: boolean;
 }
 
+
 export interface InvitationResult {
   success: boolean;
-  type: 'email_sent' | 'notification_sent' | 'unknown';
+  type: 'email_sent' | 'notification_sent' | 'already_member' | 'general_success' | 'unknown';
   message: string;
   emailSent?: boolean;
   member?: TeamMember;
