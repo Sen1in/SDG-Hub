@@ -3,7 +3,8 @@ import type {
   TeamMember, 
   TeamDetailResponse, 
   CreateTeamRequest, 
-  UserCheckResponse 
+  UserCheckResponse, 
+  InvitationResult
 } from '../types/index';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -210,14 +211,56 @@ class TeamApiService {
     teamId: string, 
     identifier: string, 
     type: 'email' | 'username' = 'email'
-  ): Promise<TeamMember> {
+  ): Promise<InvitationResult> {
     const payload = type === 'email' ? { email: identifier } : { username: identifier };
     const response = await this.fetchWithAuth(`/team/${teamId}/invite/`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
     
-    return response.member;
+    if (response.success) {
+      if (response.type === 'email_sent') {
+        return {
+          success: true,
+          type: 'email_sent',
+          message: response.message,
+          emailSent: true,
+          invitation: response.invitation
+        };
+      } else if (response.type === 'notification_sent') {
+        return {
+          success: true,
+          type: 'notification_sent',
+          message: response.message,
+          emailSent: false,
+          member: response.notification ? {
+            id: response.notification.id,
+            username: response.notification.recipient,
+            email: '',
+            role: 'view' as const,
+            joinedAt: new Date().toISOString()
+          } : undefined,
+          notification: response.notification
+        };
+      }
+    }
+    
+    if (response.member) {
+      return {
+        success: true,
+        type: 'notification_sent',
+        message: `Successfully invited ${identifier}`,
+        emailSent: false,
+        member: response.member
+      };
+    }
+    
+    return {
+      success: true,
+      type: 'unknown',
+      message: response.message || 'Invitation sent successfully',
+      emailSent: false
+    };
   }
 
   // Check if user exists

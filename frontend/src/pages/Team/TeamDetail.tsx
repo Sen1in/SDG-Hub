@@ -10,6 +10,7 @@ import { useRemoveMember } from './hooks/useRemoveMember';
 import InviteMemberModal from './components/InviteMemberModal';
 import MemberActionDropdown from './components/MemberActionDropdown';
 import ManageCapacityModal from './components/ManageCapacityModal';
+import { InvitationResult } from './types';
 
 const TeamDetails: React.FC = () => {
   const { teamId } = useParams<{ teamId: string }>();
@@ -86,15 +87,18 @@ const TeamDetails: React.FC = () => {
     setShowCapacityModal(true);
   };
 
-  const handleInviteSuccess = async (identifier: string, type: 'email' | 'username'): Promise<void> => {
+  const handleInviteSuccess = async (identifier: string, type: 'email' | 'username'): Promise<InvitationResult> => {
     if (!teamId) {
       throw new Error('Team ID is required');
     }
     
     try {
       const result = await inviteMember(teamId, identifier, type);
-      await refetch();
-      // setShowInviteModal(false);
+      if (result && result.type === 'notification_sent' && result.member) {
+
+        await refetch();
+      }
+      return result;
     } catch (error) {
       throw error;
     }
