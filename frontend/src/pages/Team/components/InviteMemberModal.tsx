@@ -38,7 +38,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
   };
 
   // Handle form submission
-    const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -50,12 +50,11 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     
     try {
       await onSuccess(identifier.trim(), inviteType);
-      
       if (inviteType === 'email') {
-        setSuccessMessage(`Invitation email sent to ${identifier.trim()}`);
-      } else {
-        setSuccessMessage(`Invitation sent to ${identifier.trim()}`);
-      }
+            setSuccessMessage(`Invitation email sent successfully to ${identifier.trim()}! Please ask them to check their spam/junk folder if they don't receive it.`);
+          } else {
+            setSuccessMessage(`Invitation sent successfully to ${identifier.trim()}!`);
+          }
       setIdentifier('');
       setErrors({}); 
     } catch (error) {
@@ -199,33 +198,17 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
 
             {/* Success message */}
             {successMessage && (
-              <div className="space-y-3">
-                {/* Main success message with email icon */}
-                <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex-shrink-0 mr-3">
-                    <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              <div className="p-4 bg-green-50 border-l-4 border-green-400 rounded-lg">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <p className="text-sm text-green-700 font-medium">{successMessage}</p>
-                </div>
-                
-                {/* Email check reminder - only for email invitations */}
-                {inviteType === 'email' && (
-                  <div className="flex items-start p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex-shrink-0 mr-3 mt-0.5">
-                      <svg className="h-4 w-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm text-blue-700 font-medium">Can't find the email?</p>
-                      <ul className="mt-1 text-sm text-blue-600">
-                        <li>• Check your spam/junk folder</li>
-                      </ul>
-                    </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-green-700 font-medium">{successMessage}</p>
                   </div>
-                )}
+                </div>
               </div>
             )}
 

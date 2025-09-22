@@ -258,9 +258,6 @@ class EmailTemplateUtils:
                             <h4 style="margin: 0 0 10px 0; color: #1f2937; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">
                                 SDG Knowledge System
                             </h4>
-                            <p style="margin: 0; color: #6b7280; font-size: 12px; font-family: Arial, sans-serif;">
-                                Sustainable Development Goals Knowledge System
-                            </p>
                         </td>
                     </tr>
                 </table>
@@ -294,5 +291,4 @@ Important: This invitation expires in 7 days. Please register soon to join the t
 
 ---
 SDG Knowledge System
-Sustainable Development Goals Knowledge System
 """
