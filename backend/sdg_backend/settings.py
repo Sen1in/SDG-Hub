@@ -239,6 +239,21 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'apps.notifications': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'apps.notifications.services': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'apps.notifications.utils': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
     },
 }
 
@@ -309,3 +324,10 @@ EMAIL_VERIFICATION_CODE_RESEND_INTERVAL_MINUTES = 1
 FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 20000 
+
+FRONTEND_URL = os.environ.get('FRONTEND_URL', None)
+if not FRONTEND_URL:
+    if os.getenv('DEBUG', 'True').lower() == 'true':
+        FRONTEND_URL = 'http://localhost:3000'
+    else:
+        FRONTEND_URL = 'https://sdg.unswzoo.com'

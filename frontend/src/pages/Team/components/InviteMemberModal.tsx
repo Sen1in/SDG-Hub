@@ -38,7 +38,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
   };
 
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -50,18 +50,16 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     
     try {
       await onSuccess(identifier.trim(), inviteType);
-      setSuccessMessage(`Successfully invited ${identifier.trim()} to the team!`);
-      // Show success message briefly then close
-      setTimeout(() => {
-        setSuccessMessage('');
-        setIdentifier('');
-        setErrors({});
-        onClose();
-      }, 1500);
-    } catch (error) {
-      // Error is already formatted in the hook, display directly
-      let errorMessage = 'Failed to invite member. Please try again.';
       
+      if (inviteType === 'email') {
+        setSuccessMessage(`Invitation email sent to ${identifier.trim()}`);
+      } else {
+        setSuccessMessage(`Invitation sent to ${identifier.trim()}`);
+      }
+      setIdentifier('');
+      setErrors({}); 
+    } catch (error) {
+      let errorMessage = 'Failed to invite member. Please try again.';
       if (error instanceof Error) {
         errorMessage = error.message;
       }
@@ -193,7 +191,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               )}
               <p className="mt-1 text-xs text-gray-500">
                 {inviteType === 'email' 
-                  ? 'The user will be added to the team immediately if they exist in our system.'
+                  ? ''
                   : 'Enter the exact username of the user you want to invite.'
                 }
               </p>
@@ -201,17 +199,33 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
 
             {/* Success message */}
             {successMessage && (
-              <div className="p-4 bg-green-50 border-l-4 border-green-400 rounded-lg">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <div className="space-y-3">
+                {/* Main success message with email icon */}
+                <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex-shrink-0 mr-3">
+                    <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <div className="ml-3">
-                    <p className="text-sm text-green-700 font-medium">{successMessage}</p>
-                  </div>
+                  <p className="text-sm text-green-700 font-medium">{successMessage}</p>
                 </div>
+                
+                {/* Email check reminder - only for email invitations */}
+                {inviteType === 'email' && (
+                  <div className="flex items-start p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex-shrink-0 mr-3 mt-0.5">
+                      <svg className="h-4 w-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm text-blue-700 font-medium">Can't find the email?</p>
+                      <ul className="mt-1 text-sm text-blue-600">
+                        <li>• Check your spam/junk folder</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -239,7 +253,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                 disabled={isLoading}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancel
+                {successMessage ? 'Close' : 'Cancel'}
               </button>
               <button
                 type="submit"

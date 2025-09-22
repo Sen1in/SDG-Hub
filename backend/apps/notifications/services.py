@@ -1,12 +1,13 @@
 # apps/notifications/services.py
 import secrets
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
+import logging
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 from .models import PendingEmailInvitation
+from .utils import EmailTemplateUtils
+
+logger = logging.getLogger(__name__)
 
 class EmailInvitationService:
     
@@ -16,7 +17,8 @@ class EmailInvitationService:
     
     @staticmethod
     def create_email_invitation(email, team_id, team_name, inviter_username, 
-                              inviter_email, invited_identifier):
+                              inviter_email, invited_identifier, base_url=None):
+        """创建邮件邀请，支持动态base_url"""
         existing_invitation = PendingEmailInvitation.objects.filter(
             email=email,
             team_id=str(team_id),
@@ -44,38 +46,41 @@ class EmailInvitationService:
         return invitation
     
     @staticmethod
-    def send_invitation_email(invitation):
+    def send_invitation_email(invitation, base_url=None):
+        """发送邀请邮件，使用新的utils中的方法"""
         try:
-            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
-            registration_url = f"{frontend_url}/register?invitation_token={invitation.invitation_token}"
-
-            context = {
-                'inviter_username': invitation.inviter_username,
-                'team_name': invitation.team_name,
-                'registration_url': registration_url,
-                'expires_days': 7,
-                'site_name': getattr(settings, 'SITE_NAME', 'SDG Knowledge System'),
-            }
+            logger.info(f"EmailInvitationService.send_invitation_email called for {invitation.email}")
             
-            html_message = render_to_string('notifications/invitation_email.html', context)
-            plain_message = strip_tags(html_message)
+            # 如果没有提供base_url，使用配置的前端URL
+            if not base_url:
+                base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+                logger.info(f"Using default base_url from settings: {base_url}")
+            else:
+                logger.info(f"Using provided base_url: {base_url}")
             
-            send_mail(
-                subject=f'You\'re invited to join "{invitation.team_name}" team',
-                message=plain_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[invitation.email],
-                html_message=html_message,
-                fail_silently=False,
-            )
+            # 确保base_url格式正确
+            base_url = base_url.rstrip('/')
+            logger.info(f"Final base_url: {base_url}")
             
-            invitation.email_sent = True
-            invitation.email_sent_at = timezone.now()
-            invitation.save()
+            # 使用新的邮件发送工具
+            logger.info("Calling EmailTemplateUtils.send_team_invitation_email")
+            success = EmailTemplateUtils.send_team_invitation_email(invitation, base_url)
             
-            return True
+            if success:
+                invitation.email_sent = True
+                invitation.email_sent_at = timezone.now()
+                invitation.save()
+                logger.info(f"Invitation email sent successfully to {invitation.email} for team {invitation.team_name}")
+            else:
+                logger.error(f"EmailTemplateUtils.send_team_invitation_email returned False for {invitation.email}")
+            
+            return success
             
         except Exception as e:
+            logger.error(f"Error in EmailInvitationService.send_invitation_email: {str(e)}")
+            logger.error(f"Exception type: {type(e).__name__}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             print(f"Failed to send invitation email: {e}")
             return False
     

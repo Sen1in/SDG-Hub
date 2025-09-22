@@ -92,12 +92,10 @@ const TeamDetails: React.FC = () => {
     }
     
     try {
-      await inviteMember(teamId, identifier, type);
-      // Refresh team data after successful invite to show new member
+      const result = await inviteMember(teamId, identifier, type);
       await refetch();
-      setShowInviteModal(false);
+      // setShowInviteModal(false);
     } catch (error) {
-      // Error already handled in useInviteMember hook, re-throw to modal
       throw error;
     }
   };
