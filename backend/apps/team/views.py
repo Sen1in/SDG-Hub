@@ -175,7 +175,10 @@ def invite_member(request, team_id):
                     
                     if email_sent:
                         return Response({
+                            'success': True,
+                            'type': 'email_sent',
                             'message': f'Invitation email sent to {email}',
+                            'email_sent': True, 
                             'invitation': {
                                 'id': str(invitation.id),
                                 'email': email,
@@ -257,6 +260,8 @@ def invite_member(request, team_id):
                 )
                 
                 return Response({
+                    'success': True,
+                    'type': 'notification_sent',
                     'message': f'Successfully sent invitation to {user_to_invite.username}',
                     'notification': {
                         'id': str(notification.id),
@@ -272,6 +277,7 @@ def invite_member(request, team_id):
             {'error': f'Unexpected error: {str(e)}'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def check_user_exists(request):

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { InviteMemberModalProps } from '../types';
+import type { InvitationResult, InviteMemberModalProps } from '../types';
 
 const InviteMemberModal: React.FC<InviteMemberModalProps> = ({ 
   isOpen, 
@@ -11,21 +11,19 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
   const [identifier, setIdentifier] = useState<string>('');
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [successMessage, setSuccessMessage] = useState<string>('');
+  const [showEmailWarning, setShowEmailWarning] = useState<boolean>(false);
 
-  // Form validation
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
 
     if (!identifier.trim()) {
       newErrors.identifier = `${inviteType === 'email' ? 'Email' : 'Username'} is required`;
     } else if (inviteType === 'email') {
-      // Basic email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(identifier.trim())) {
         newErrors.identifier = 'Please enter a valid email address';
       }
     } else {
-      // Username validation
       if (identifier.trim().length < 3) {
         newErrors.identifier = 'Username must be at least 3 characters';
       } else if (identifier.trim().length > 30) {
@@ -37,40 +35,66 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = async () => {
+    if (successMessage) {
+      setIdentifier('');
+      setErrors({});
+      setSuccessMessage('');
+      setShowEmailWarning(false);
+      return;
+    }
+
     if (!validateForm()) {
       return;
     }
 
     setErrors({});
     setSuccessMessage('');
+    setShowEmailWarning(false);
     
     try {
-      await onSuccess(identifier.trim(), inviteType);
-      setSuccessMessage(`Successfully invited ${identifier.trim()} to the team!`);
-      // Show success message briefly then close
-      setTimeout(() => {
-        setSuccessMessage('');
-        setIdentifier('');
-        setErrors({});
-        onClose();
-      }, 1500);
-    } catch (error) {
-      // Error is already formatted in the hook, display directly
-      let errorMessage = 'Failed to invite member. Please try again.';
+      const result = await onSuccess(identifier.trim(), inviteType);
       
+      if (result && result.success) {
+        if (result.type === 'email_sent' || result.emailSent) {
+          setSuccessMessage(`Invitation email sent to ${identifier.trim()}`);
+          setShowEmailWarning(true);
+        } else if (result.type === 'notification_sent') {
+          setSuccessMessage(`Invitation sent successfully to ${identifier.trim()}! They will receive a notification in the system.`);
+          setShowEmailWarning(false);
+        } else if (result.type === 'already_member') {
+          setSuccessMessage(`${identifier.trim()} is already a member of this team.`);
+          setShowEmailWarning(false);
+        } else if (result.type === 'general_success') {
+          setSuccessMessage(result.message);
+          setShowEmailWarning(result.emailSent || false);
+        } else {
+          setSuccessMessage(`Invitation sent successfully to ${identifier.trim()}!`);
+          setShowEmailWarning(false);
+        }
+      } else {
+        if (inviteType === 'email') {
+          setSuccessMessage(`Invitation email sent to ${identifier.trim()}`);
+          setShowEmailWarning(true);
+        } else {
+          setSuccessMessage(`Invitation sent successfully to ${identifier.trim()}!`);
+          setShowEmailWarning(false);
+        }
+      }
+      
+      setErrors({}); 
+    } catch (error) {
+      let errorMessage = 'Failed to invite member. Please try again.';
       if (error instanceof Error) {
         errorMessage = error.message;
       }
       
       setErrors({ submit: errorMessage });
+      setSuccessMessage('');
+      setShowEmailWarning(false);
     }
   };
 
-  // Close modal and reset form
   const handleClose = () => {
     if (isLoading) return;
     
@@ -78,25 +102,39 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     setInviteType('email');
     setErrors({});
     setSuccessMessage('');
+    setShowEmailWarning(false);
     onClose();
   };
 
-  // Handle ESC key to close
+  const handleCloseAfterSuccess = () => {
+    if (isLoading) return;
+    
+    setTimeout(() => {
+      handleClose();
+    }, 100);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape' && !isLoading) {
       handleClose();
     }
   };
 
-  // Clear errors and success messages when switching invite type
+  const handleInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !isLoading && identifier.trim()) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   const handleTypeChange = (type: 'email' | 'username') => {
     setInviteType(type);
     setIdentifier('');
     setErrors({});
     setSuccessMessage('');
+    setShowEmailWarning(false);
   };
 
-  // Return null if modal is not open
   if (!isOpen) {
     return null;
   }
@@ -110,7 +148,6 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     >
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          {/* Modal header */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Invite Member</h2>
             <button
@@ -125,9 +162,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             </button>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            {/* Invite type selection */}
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 Invite by
@@ -160,7 +195,6 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               </div>
             </div>
 
-            {/* Input field */}
             <div>
               <label htmlFor="identifier" className="block text-sm font-medium text-gray-700 mb-2">
                 {inviteType === 'email' ? 'Email Address' : 'Username'} <span className="text-red-500">*</span>
@@ -176,8 +210,10 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                   }
                   if (successMessage) {
                     setSuccessMessage('');
+                    setShowEmailWarning(false);
                   }
                 }}
+                onKeyDown={handleInputKeyDown}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-200 ${
                   errors.identifier 
                     ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
@@ -193,29 +229,37 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               )}
               <p className="mt-1 text-xs text-gray-500">
                 {inviteType === 'email' 
-                  ? 'The user will be added to the team immediately if they exist in our system.'
+                  ? 'If the user is not registered, they will receive an invitation email.'
                   : 'Enter the exact username of the user you want to invite.'
                 }
               </p>
             </div>
 
-            {/* Success message */}
             {successMessage && (
-              <div className="p-4 bg-green-50 border-l-4 border-green-400 rounded-lg">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm text-green-700 font-medium">{successMessage}</p>
-                  </div>
+              <div className="mt-3 space-y-3">
+                <div className="flex items-center gap-2 text-green-600">
+                  <span className="text-green-600">✉️</span>
+                  <p className="text-sm font-medium">
+                    {successMessage}
+                  </p>
                 </div>
+                
+                {showEmailWarning && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 text-sm">⚠️</span>
+                      <div className="text-sm text-blue-800 space-y-2">
+                        <p className="font-medium">Can't find the email?</p>
+                        <div className="space-y-1 text-blue-700">
+                          <p>• <strong>Check your spam/junk folder</strong></p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Submit error display */}
             {errors.submit && (
               <div className="p-4 bg-red-50 border-l-4 border-red-400 rounded-lg">
                 <div className="flex">
@@ -231,19 +275,19 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               </div>
             )}
 
-            {/* Action buttons */}
             <div className="flex space-x-3 pt-4">
               <button
                 type="button"
-                onClick={handleClose}
+                onClick={successMessage ? handleCloseAfterSuccess : handleClose}
                 disabled={isLoading}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancel
+                {successMessage ? 'Close' : 'Cancel'}
               </button>
               <button
-                type="submit"
-                disabled={!identifier.trim() || isLoading}
+                type="button"
+                onClick={handleSubmit}
+                disabled={!identifier.trim() || isLoading || !!successMessage}
                 className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center"
               >
                 {isLoading ? (
@@ -254,12 +298,14 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                     </svg>
                     Inviting...
                   </>
+                ) : successMessage ? (
+                  'Invite Another'
                 ) : (
                   'Invite Member'
                 )}
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

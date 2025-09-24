@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { teamApiService } from '../utils/utils';
-import type { TeamMember } from '../types';
+import { InvitationResult } from '../types';
 
 export const useInviteMember = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -10,12 +10,12 @@ export const useInviteMember = () => {
     teamId: string,
     identifier: string, 
     type: 'email' | 'username' = 'email'
-  ): Promise<TeamMember> => {
+  ): Promise<InvitationResult> => {
     try {
       setIsLoading(true);
       setError(null);
-      const newMember = await teamApiService.inviteMember(teamId, identifier, type);
-      return newMember;
+      const result = await teamApiService.inviteMember(teamId, identifier, type);
+      return result;
     } catch (err) {
       let errorMessage = 'Failed to invite member';
       
@@ -30,6 +30,9 @@ export const useInviteMember = () => {
                    message.includes('already in team') ||
                    message.includes('is already a member')) {
           errorMessage = 'This user is already a member of the team.';
+        } else if (message.includes('already been sent') ||
+                   message.includes('pending invitation')) {
+          errorMessage = 'An invitation has already been sent to this user.';
         } else if (message.includes('Team is full') || 
                    message.includes('maximum capacity') ||
                    message.includes('max_members')) {
@@ -40,6 +43,8 @@ export const useInviteMember = () => {
           errorMessage = 'Only team owners and editors can invite members.';
         } else if (message.includes('inactive') || message.includes('not active')) {
           errorMessage = 'This user account is inactive and cannot be invited.';
+        } else if (message.includes('Failed to send invitation email')) {
+          errorMessage = 'Failed to send invitation email. Please try again later.';
         } else {
           errorMessage = message;
         }

@@ -81,7 +81,7 @@ export type RolePermissions = {
 export interface InviteMemberModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (identifier: string, type: 'email' | 'username') => Promise<any>; 
+  onSuccess: (identifier: string, type: 'email' | 'username') => Promise<InvitationResult>; 
   isLoading?: boolean;
 }
 
@@ -100,4 +100,26 @@ export interface ManageCapacityModalProps {
   currentCapacity: number;
   currentMemberCount: number;
   isLoading?: boolean;
+}
+
+
+export interface InvitationResult {
+  success: boolean;
+  type: 'email_sent' | 'notification_sent' | 'already_member' | 'general_success' | 'unknown';
+  message: string;
+  emailSent?: boolean;
+  member?: TeamMember;
+  invitation?: {
+    id: string;
+    email?: string;
+    team_name: string;
+    expires_at: string;
+  };
+  notification?: {
+    id: string;
+    recipient: string;
+    team_name: string;
+    expires_at: string;
+    status: string;
+  };
 }

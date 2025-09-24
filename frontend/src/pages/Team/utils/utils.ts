@@ -3,7 +3,8 @@ import type {
   TeamMember, 
   TeamDetailResponse, 
   CreateTeamRequest, 
-  UserCheckResponse 
+  UserCheckResponse, 
+  InvitationResult
 } from '../types/index';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -210,14 +211,71 @@ class TeamApiService {
     teamId: string, 
     identifier: string, 
     type: 'email' | 'username' = 'email'
-  ): Promise<TeamMember> {
+  ): Promise<InvitationResult> {
     const payload = type === 'email' ? { email: identifier } : { username: identifier };
     const response = await this.fetchWithAuth(`/team/${teamId}/invite/`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
     
-    return response.member;
+    // 处理明确的成功响应
+    if (response.success) {
+      if (response.type === 'email_sent') {
+        return {
+          success: true,
+          type: 'email_sent',
+          message: response.message,
+          emailSent: true,
+          invitation: response.invitation
+        };
+      } else if (response.type === 'notification_sent') {
+        return {
+          success: true,
+          type: 'notification_sent',
+          message: response.message,
+          emailSent: false,
+          member: response.member,
+          notification: response.notification
+        };
+      }
+    }
+    
+    if (response.message && response.message.includes('already a member')) {
+      return {
+        success: true,
+        type: 'already_member',
+        message: response.message,
+        emailSent: false
+      };
+    }
+    
+    if (response.member) {
+      return {
+        success: true,
+        type: 'notification_sent',
+        message: `Successfully invited ${identifier}`,
+        emailSent: false,
+        member: response.member
+      };
+    }
+    
+    // 如果有 message 字段且没有明确的错误标识，视为成功
+    if (response.message) {
+      return {
+        success: true,
+        type: 'general_success',
+        message: response.message,
+        emailSent: type === 'email'
+      };
+    }
+    
+    // 默认返回
+    return {
+      success: true,
+      type: 'unknown',
+      message: response.message || 'Invitation sent successfully',
+      emailSent: false
+    };
   }
 
   // Check if user exists
