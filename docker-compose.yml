@@ -22,6 +22,28 @@ services:
       timeout: 20s
       retries: 10
 
+  shadow-db:
+    image: mysql:8.0
+    container_name: sdg_shadow_db
+    environment:
+      MYSQL_ROOT_PASSWORD: SDG_Root@2025
+      MYSQL_DATABASE: sdg_shadow_database
+      MYSQL_USER: sdg_shadow_admin
+      MYSQL_PASSWORD: SDG_Admin@2025
+    volumes:
+      - ./database/sdg_database_backup.sql:/docker-entrypoint-initdb.d/sdg_database_backup.sql
+      - shadow_mysql_data:/var/lib/mysql
+    ports:
+      - "3308:3306"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    profiles:
+      - shadow
+
   # Redis Channel Layer
   redis:
     image: redis:alpine
@@ -50,6 +72,11 @@ services:
       - DATABASE_NAME=sdg_database
       - DATABASE_USER=sdg_admin
       - DATABASE_PASSWORD=SDG_Admin@2025
+      # - DATABASE_HOST=shadow-db
+      # - DATABASE_PORT=3306
+      # - DATABASE_NAME=sdg_shadow_database
+      # - DATABASE_USER=sdg_shadow_admin
+      # - DATABASE_PASSWORD=SDG_Admin@2025
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
@@ -79,6 +106,11 @@ services:
       - DATABASE_NAME=sdg_database
       - DATABASE_USER=sdg_admin
       - DATABASE_PASSWORD=SDG_Admin@2025
+      # - DATABASE_HOST=shadow-db
+      # - DATABASE_PORT=3306
+      # - DATABASE_NAME=sdg_shadow_database
+      # - DATABASE_USER=sdg_shadow_admin
+      # - DATABASE_PASSWORD=SDG_Admin@2025
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
@@ -125,6 +157,7 @@ services:
 
 volumes:
   mysql_data:
+  shadow_mysql_data:
   redis_data:
   media_files:
 
