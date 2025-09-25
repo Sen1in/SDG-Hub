@@ -4,7 +4,7 @@ const AboutUs: React.FC = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-sdg-primary via-blue-600 to-sdg-secondary overflow-hidden">
+      <section className="relative bg-sdg-primary overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-black/20"></div>
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
@@ -36,12 +36,12 @@ const AboutUs: React.FC = () => {
             <div className="space-y-6 mb-12">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">SDG Education Database</h3>
-                <p className="text-gray-700">With over 3,100 entries, this extensive collection offers in-depth insights into SDG-related education.</p>
+                <p className="text-gray-700">With thousands of entries, this extensive collection offers in-depth insights into SDG-related education.</p>
               </div>
 
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">SDG Action Database</h3>
-                <p className="text-gray-700">Featuring 2,200+ curated items, this database highlights actionable SDG plans and real-world examples, supporting the effective implementation of sustainable practices.</p>
+                <p className="text-gray-700">Featuring curated items, this database highlights actionable SDG plans and real-world examples, supporting the effective implementation of sustainable practices.</p>
               </div>
 
               <div>
