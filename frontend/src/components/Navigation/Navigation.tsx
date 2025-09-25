@@ -73,16 +73,12 @@ const Navigation: React.FC = () => {
     <>
       <nav className="bg-white shadow-soft border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-20">
             {/* Logo and Brand */}
             <div className="flex items-center space-x-4">
               <Link to="/" className="flex items-center space-x-3 group">
-                <div className="w-10 h-10 bg-sdg-gradient rounded-lg flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform duration-200">
-                  <img src="/SDG_logo.png" alt="SDG Logo" className="w-8 h-8 object-contain" />
-                </div>
-                <div className="hidden md:block">
-                  <h1 className="text-xl font-bold text-gray-900">Knowledge System</h1>
-                  <p className="text-xs text-gray-500">Sustainable Development Goals</p>
+                <div className="w-14 h-14 bg-sdg-gradient rounded-lg flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform duration-200">
+                  <img src="/SDG_logo.png" alt="SDG Logo" className="w-12 h-12 object-contain" />
                 </div>
               </Link>
             </div>
