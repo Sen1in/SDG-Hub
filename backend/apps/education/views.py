@@ -119,14 +119,19 @@ class EducationListView(generics.ListAPIView):
         if industry:
             queryset = queryset.filter(useful_for_which_industries__icontains=industry)
         
-        queryset = queryset.annotate(
-            first_letter=Case(
-                When(title__regex=r'^[0-9]', then=Value('9_')), 
-                When(title__regex=r'^[^A-Za-z0-9]', then=Value('Z_')),
-                default=Value(''),
-                output_field=CharField()
-            )
-        ).order_by('first_letter', 'title')
+        queryset = queryset.extra(
+            select={
+                'year_numeric': """
+                    CASE 
+                        WHEN Year IS NOT NULL AND Year != '' AND Year REGEXP '^[0-9]+$' 
+                        THEN CAST(Year AS UNSIGNED)
+                        WHEN Year IS NOT NULL AND Year != '' 
+                        THEN CAST(SUBSTRING(Year, 1, 4) AS UNSIGNED)
+                        ELSE 0 
+                    END
+                """
+            }
+        ).order_by('-year_numeric', 'title').distinct()
         
         return queryset.distinct()
 
