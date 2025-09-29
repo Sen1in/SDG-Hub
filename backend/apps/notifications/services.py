@@ -47,41 +47,27 @@ class EmailInvitationService:
     
     @staticmethod
     def send_invitation_email(invitation, base_url=None):
-        """发送邀请邮件，使用新的utils中的方法"""
+        """send invitation email"""
         try:
-            logger.info(f"EmailInvitationService.send_invitation_email called for {invitation.email}")
-            
-            # 如果没有提供base_url，使用配置的前端URL
             if not base_url:
                 base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
-                logger.info(f"Using default base_url from settings: {base_url}")
-            else:
-                logger.info(f"Using provided base_url: {base_url}")
             
-            # 确保base_url格式正确
             base_url = base_url.rstrip('/')
-            logger.info(f"Final base_url: {base_url}")
             
-            # 使用新的邮件发送工具
-            logger.info("Calling EmailTemplateUtils.send_team_invitation_email")
             success = EmailTemplateUtils.send_team_invitation_email(invitation, base_url)
             
             if success:
                 invitation.email_sent = True
                 invitation.email_sent_at = timezone.now()
                 invitation.save()
-                logger.info(f"Invitation email sent successfully to {invitation.email} for team {invitation.team_name}")
+                logger.info(f"Invitation email sent successfully to {invitation.email}")
             else:
-                logger.error(f"EmailTemplateUtils.send_team_invitation_email returned False for {invitation.email}")
+                logger.error(f"Failed to send invitation email to {invitation.email}")
             
             return success
             
         except Exception as e:
-            logger.error(f"Error in EmailInvitationService.send_invitation_email: {str(e)}")
-            logger.error(f"Exception type: {type(e).__name__}")
-            import traceback
-            logger.error(f"Full traceback: {traceback.format_exc()}")
-            print(f"Failed to send invitation email: {e}")
+            logger.error(f"Error sending invitation email to {invitation.email}: {str(e)}")
             return False
     
     @staticmethod

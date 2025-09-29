@@ -242,17 +242,7 @@ LOGGING = {
         'apps.notifications': {
             'handlers': ['file', 'console'],
             'level': 'INFO',
-            'propagate': True,
-        },
-        'apps.notifications.services': {
-            'handlers': ['file', 'console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'apps.notifications.utils': {
-            'handlers': ['file', 'console'],
-            'level': 'INFO',
-            'propagate': True,
+            'propagate': False,
         },
     },
 }
