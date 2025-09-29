@@ -22,7 +22,19 @@ export const useInviteMember = () => {
       if (err instanceof Error) {
         const message = err.message;
         
-        if (message.includes('No user found') || 
+        if (message.includes('Please wait') && message.includes('seconds before resending')) {
+          const secondsMatch = message.match(/(\d+)\s+seconds/);
+          const remainingSeconds = secondsMatch ? parseInt(secondsMatch[1]) : 60;
+          
+          if (remainingSeconds <= 10) {
+            errorMessage = `Please wait ${remainingSeconds} seconds before resending invitation.`;
+          } else {
+            const minutes = Math.ceil(remainingSeconds / 60);
+            errorMessage = `Please wait about ${minutes} minute${minutes > 1 ? 's' : ''} before resending invitation.`;
+          }
+        }
+        
+        else if (message.includes('No user found') || 
             message.includes('not found') ||
             message.includes('does not exist')) {
           errorMessage = `No user found with this ${type}. Please check and try again.`;

@@ -56,11 +56,19 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
       const result = await onSuccess(identifier.trim(), inviteType);
       
       if (result && result.success) {
-        if (result.type === 'email_sent' || result.emailSent) {
-          setSuccessMessage(`Invitation email sent to ${identifier.trim()}`);
+        if (result.type === 'email_sent') {
+          if (result.resent) {
+            setSuccessMessage(`Invitation email resent to ${identifier.trim()}`);
+          } else {
+            setSuccessMessage(`Invitation email sent to ${identifier.trim()}`);
+          }
           setShowEmailWarning(true);
         } else if (result.type === 'notification_sent') {
-          setSuccessMessage(`Invitation sent successfully to ${identifier.trim()}! They will receive a notification in the system.`);
+          if (result.invitation_renewed) {
+            setSuccessMessage(`Invitation to ${identifier.trim()} has been renewed! They will receive an updated notification.`);
+          } else {
+            setSuccessMessage(`Invitation sent successfully to ${identifier.trim()}! They will receive a notification in the system.`);
+          }
           setShowEmailWarning(false);
         } else if (result.type === 'already_member') {
           setSuccessMessage(`${identifier.trim()} is already a member of this team.`);
@@ -229,8 +237,8 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
               )}
               <p className="mt-1 text-xs text-gray-500">
                 {inviteType === 'email' 
-                  ? 'If the user is not registered, they will receive an invitation email.'
-                  : 'Enter the exact username of the user you want to invite.'
+                  ? 'If the user is not registered, they will receive an invitation email. You can resend after 1 minute.'
+                  : 'Enter the exact username of the user you want to invite. You can resend after 1 minute.'
                 }
               </p>
             </div>
@@ -252,6 +260,7 @@ const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                         <p className="font-medium">Can't find the email?</p>
                         <div className="space-y-1 text-blue-700">
                           <p>• <strong>Check your spam/junk folder</strong></p>
+                          <p>• <strong>You can resend after 1 minute if needed</strong></p>
                         </div>
                       </div>
                     </div>

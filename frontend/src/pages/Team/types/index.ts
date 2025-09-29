@@ -108,12 +108,16 @@ export interface InvitationResult {
   type: 'email_sent' | 'notification_sent' | 'already_member' | 'general_success' | 'unknown';
   message: string;
   emailSent?: boolean;
+  resent?: boolean;
+  invitation_renewed?: boolean; 
+  
   member?: TeamMember;
   invitation?: {
     id: string;
     email?: string;
     team_name: string;
     expires_at: string;
+    sent_at?: string;
   };
   notification?: {
     id: string;
