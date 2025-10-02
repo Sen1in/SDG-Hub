@@ -33,12 +33,9 @@ class EmailTemplateUtils:
     
     @staticmethod
     def send_team_invitation_email(invitation, base_url):
-        """Send team invitation email"""
+        """Send team invitation email - simplified logging"""
         try:
-            logger.info(f"Starting to send invitation email to {invitation.email}")
-            
             registration_url = f"{base_url}/register?invitation_token={invitation.invitation_token}"
-            logger.info(f"Generated registration URL: {registration_url}")
             
             html_content = EmailTemplateUtils._create_outlook_compatible_html(
                 team_name=invitation.team_name,
@@ -47,7 +44,6 @@ class EmailTemplateUtils:
                 registration_url=registration_url,
                 email=invitation.email
             )
-            logger.info("HTML content created successfully")
             
             text_content = EmailTemplateUtils._create_plain_text(
                 team_name=invitation.team_name,
@@ -55,10 +51,8 @@ class EmailTemplateUtils:
                 registration_url=registration_url,
                 email=invitation.email
             )
-            logger.info("Text content created successfully")
             
             subject = f'Team Invitation: Join "{invitation.team_name}" - SDG Knowledge System'
-            logger.info(f"Email subject: {subject}")
             
             msg = EmailMultiAlternatives(
                 subject=subject,
@@ -66,26 +60,15 @@ class EmailTemplateUtils:
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[invitation.email]
             )
-            logger.info(f"EmailMultiAlternatives created, from: {settings.DEFAULT_FROM_EMAIL}, to: {invitation.email}")
             
             msg.attach_alternative(html_content, "text/html")
-            logger.info("HTML alternative attached")
-            
-            logger.info("Attempting to send email...")
             msg.send()
-            logger.info("Email sent successfully")
-            
-            logger.info(f"Team invitation email sent to {invitation.email}")
             return True
             
         except Exception as e:
             logger.error(f"Failed to send team invitation email to {invitation.email}: {str(e)}")
-            logger.error(f"Exception type: {type(e).__name__}")
-            logger.error(f"Exception details: {repr(e)}")
-            import traceback
-            logger.error(f"Full traceback: {traceback.format_exc()}")
             return False
-    
+        
     @staticmethod
     def _create_outlook_compatible_html(team_name, inviter_username, inviter_email, registration_url, email):
         """Create Outlook compatible HTML email template"""

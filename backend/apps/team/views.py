@@ -100,7 +100,7 @@ def leave_team(request, team_id):
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def invite_member(request, team_id):
-    """Invite member to join team - prevents duplicate invitations to the same team"""
+    """Invite member to join team - allows resending with 1-minute cooldown"""
     team = get_object_or_404(Team, id=team_id)
     
     # Check permissions (only owner and editors can invite)
@@ -149,10 +149,43 @@ def invite_member(request, team_id):
                     ).first()
                     
                     if existing_email_invitation:
-                        return Response({
-                            'error': f'An invitation has already been sent to {email}',
-                            'invitation_id': existing_email_invitation.id
-                        }, status=status.HTTP_400_BAD_REQUEST)
+                        if existing_email_invitation.email_sent_at:
+                            time_since_last_send = timezone.now() - existing_email_invitation.email_sent_at
+                            cooldown_seconds = 60
+                            
+                            if time_since_last_send.total_seconds() < cooldown_seconds:
+                                remaining_seconds = cooldown_seconds - int(time_since_last_send.total_seconds())
+                                return Response(
+                                    {'error': f'Please wait {remaining_seconds} seconds before resending invitation to {email}'},
+                                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                                )
+                        
+                        existing_email_invitation.expires_at = timezone.now() + timedelta(days=7)
+                        existing_email_invitation.email_sent = False
+                        existing_email_invitation.save()
+                        
+                        email_sent = EmailInvitationService.send_invitation_email(existing_email_invitation)
+                        
+                        if email_sent:
+                            return Response({
+                                'success': True,
+                                'type': 'email_sent', 
+                                'message': f'Invitation email resent to {email}',
+                                'emailSent': True,  
+                                'resent': True,
+                                'invitation': {
+                                    'id': str(existing_email_invitation.id),
+                                    'email': email,
+                                    'team_name': team.name,
+                                    'expires_at': existing_email_invitation.expires_at.isoformat(),
+                                    'sent_at': existing_email_invitation.email_sent_at.isoformat() if existing_email_invitation.email_sent_at else None
+                                }
+                            }, status=status.HTTP_200_OK)
+                        else:
+                            return Response(
+                                {'error': 'Failed to resend invitation email'},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                            )
                     
                     if team.member_count >= team.max_members:
                         return Response({
@@ -178,7 +211,7 @@ def invite_member(request, team_id):
                             'success': True,
                             'type': 'email_sent',
                             'message': f'Invitation email sent to {email}',
-                            'email_sent': True, 
+                            'emailSent': True,
                             'invitation': {
                                 'id': str(invitation.id),
                                 'email': email,
@@ -236,10 +269,31 @@ def invite_member(request, team_id):
                 ).first()
                 
                 if existing_invitation:
+                    time_since_created = timezone.now() - existing_invitation.created_at
+                    cooldown_seconds = 60
+                    
+                    if time_since_created.total_seconds() < cooldown_seconds:
+                        remaining_seconds = cooldown_seconds - int(time_since_created.total_seconds())
+                        return Response({
+                            'error': f'Please wait {remaining_seconds} seconds before resending invitation to {user_to_invite.username}',
+                        }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+                    existing_invitation.expires_at = timezone.now() + timedelta(days=7)
+                    existing_invitation.save()
+                    
                     return Response({
-                        'error': f'User {user_to_invite.username} already has a pending invitation to this team',
-                        'invitation_id': existing_invitation.id
-                    }, status=status.HTTP_400_BAD_REQUEST)
+                        'success': True,
+                        'type': 'notification_sent',
+                        'message': f'Invitation to {user_to_invite.username} has been renewed',
+                        'emailSent': False,
+                        'invitation_renewed': True,
+                        'notification': {
+                            'id': str(existing_invitation.id),
+                            'recipient': user_to_invite.username,
+                            'team_name': team.name,
+                            'expires_at': existing_invitation.expires_at.isoformat(),
+                            'status': 'pending'
+                        }
+                    }, status=status.HTTP_200_OK)
                 
                 # Create new invitation
                 expires_at = timezone.now() + timedelta(days=7)
@@ -263,6 +317,7 @@ def invite_member(request, team_id):
                     'success': True,
                     'type': 'notification_sent',
                     'message': f'Successfully sent invitation to {user_to_invite.username}',
+                    'emailSent': False,
                     'notification': {
                         'id': str(notification.id),
                         'recipient': user_to_invite.username,
