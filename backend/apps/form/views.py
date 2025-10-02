@@ -360,6 +360,10 @@ class CollaborativeFormDetailView(generics.RetrieveUpdateAPIView):
         content = self.get_object()
         field_name = request.data.get('field_name')
         field_value = request.data.get('field_value')
+
+        # Normalize custom location: if frontend sends custom_location, map it to location
+        if field_name == 'custom_location':
+            field_name = 'location'
         
         if not field_name:
             return Response(
@@ -500,6 +504,10 @@ def collaborative_form_batch_update(request, form_id):
     )
         
     changes = request.data.get('changes', {})
+    # Normalize custom location in batch updates
+    if 'custom_location' in changes and (not changes.get('location') or changes.get('location') == 'Others'):
+        changes['location'] = changes['custom_location']
+        del changes['custom_location']
     if not changes:
         return Response(
             {'error': 'No changes provided'},
@@ -1486,6 +1494,9 @@ def submit_form_for_review(request, form_id):
         is_staff=True
     ).exclude(id=request.user.id)
     
+    # Optional submission comments from the submitter
+    submission_comments = request.data.get('comments', '') if isinstance(request.data, dict) else ''
+
     notification_data = {
         'form_id': form.id,
         'form_title': content.title or form.title,
@@ -1496,6 +1507,7 @@ def submit_form_for_review(request, form_id):
         'submitter_username': request.user.username,
         'submitter_email': request.user.email,
         'submitted_at': form.submitted_for_review_at.isoformat(),
+        'comments': submission_comments,
     }
     
     # Create notifications for all administrators

@@ -28,6 +28,7 @@ const CollaborativeForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
   const { success, error: showError } = useNotification();
+  const [customLocation, setCustomLocation] = useState('');
   
   const {
     content,
@@ -228,7 +229,7 @@ const CollaborativeForm: React.FC = () => {
         },
         { 
           name: 'useful_industries', 
-          label: 'Useful Industries', 
+          label: 'Related Industries', 
           type: 'select',
           options: generateSelectOptions(EDUCATION_OPTIONS.industries)
         },
@@ -629,18 +630,32 @@ const CollaborativeForm: React.FC = () => {
                       }
                     >
                       {canEdit ? (
-                        <CollaborativeField
-                          config={fieldConfig}
-                          value={content[fieldConfig.name as keyof FormContent] || (fieldConfig.type === 'multiselect' ? [] : '')}
-                          onChange={(value) => handleFieldUpdate(fieldConfig.name, value)}
-                          onFocus={() => startEditing(fieldConfig.name)}
-                          onBlur={stopEditing}
-                          onCursorChange={(position, selectionStart, selectionEnd) => 
-                            updateCursor(fieldConfig.name, position, selectionStart, selectionEnd)
-                          }
-                          activeEditors={activeEditors.filter(editor => editor.field_name === fieldConfig.name)}
-                          isReadOnly={content.form_status === 'locked'}
-                        />
+                        <>
+                          <CollaborativeField
+                            config={fieldConfig}
+                            value={content[fieldConfig.name as keyof FormContent] || (fieldConfig.type === 'multiselect' ? [] : '')}
+                            onChange={(value) => handleFieldUpdate(fieldConfig.name, value)}
+                            onFocus={() => startEditing(fieldConfig.name)}
+                            onBlur={stopEditing}
+                            onCursorChange={(position, selectionStart, selectionEnd) => 
+                              updateCursor(fieldConfig.name, position, selectionStart, selectionEnd)
+                            }
+                            activeEditors={activeEditors.filter(editor => editor.field_name === fieldConfig.name)}
+                            isReadOnly={content.form_status === 'locked'}
+                          />
+                          {fieldConfig.name === 'location' && content.location === 'Others' && (
+                            <input
+                              type="text"
+                              className="form-input mt-2 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Please specify your region"
+                              value={customLocation}
+                              onChange={e => {
+                                setCustomLocation(e.target.value);
+                                handleFieldUpdate('custom_location', e.target.value);
+                              }}
+                            />
+                          )}
+                        </>
                       ) : (
                         <ReadOnlyCollaborativeField
                           config={fieldConfig}

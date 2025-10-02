@@ -136,7 +136,7 @@ export const IDA_IMPACT_TYPES = [
 
 // Filter options - Education
 export const EDUCATION_OPTIONS = {
-  years: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
+  years: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024,2025],
   disciplines: [
     'Architecture and Building',
     'Business and Management', 
@@ -209,9 +209,9 @@ export const ACTION_OPTIONS = {
 export const COMMON_OPTIONS = {
   regions: [
     'Australia', 'United States', 'New Zealand', 'United Kingdom',
-    'Italy', 'Spain', 'Global', 'China', 'Canada', 'India'
+    'Italy', 'Spain', 'Global', 'China', 'Canada', 'India', 'Others'
   ],
-  years: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
+  years: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024,2025]
 };
 
 // Tool function for generating options

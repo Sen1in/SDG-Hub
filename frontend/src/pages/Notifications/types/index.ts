@@ -20,6 +20,7 @@ export interface FormReviewRequest {
   submitter_username: string;
   submitter_email: string;
   submitted_at: string;
+  comments?: string;
 }
 
 export interface NotificationResponse {
