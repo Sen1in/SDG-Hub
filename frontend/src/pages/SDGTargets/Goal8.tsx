@@ -1,10 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Goal8 = () => {
-  const handleGoBack = () => {
-    window.history.back();
-  };
+  const navigate = useNavigate();
 
+  const handleGoBack = () => {
+    navigate('/#sdg-goals');
+  };
   return (
     <div className="container mx-auto px-4 py-8">
       <button
@@ -17,6 +19,9 @@ const Goal8 = () => {
         Go Back
       </button>
       <h2 className="text-3xl font-bold mb-4">SDG 8 Decent Work and Economic Growth</h2>
+      <p className="text-lg mb-4">
+        Promote sustained, inclusive and sustainable economic growth, full and productive employment and decent work for all.
+      </p>
       <a
         href="https://sdg-tracker.org/economic-growth"
         target="_blank"

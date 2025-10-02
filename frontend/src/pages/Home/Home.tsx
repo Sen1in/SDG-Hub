@@ -369,33 +369,33 @@ const Home: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => (
-              <div
-                key={feature.title}
-                className="card-hover p-6 text-center group cursor-pointer"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <Link to={feature.link} className="block" onClick={() => window.scrollTo(0, 0)}>
-                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${feature.color} flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                    <span className="text-2xl">{feature.icon}</span>
-                  </div>
-                </Link>
-                <div className={`text-3xl font-bold bg-gradient-to-r ${feature.color} bg-clip-text text-transparent mb-2`}>
-                  {feature.count}
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  {feature.description}
-                </p>
+            <Link
+              key={feature.title}
+              to={feature.link}
+              className="card-hover p-6 text-center group cursor-pointer block"
+              style={{ animationDelay: `${index * 0.1}s` }}
+              onClick={() => window.scrollTo(0, 0)}
+            >
+              <div className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${feature.color} flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                <span className="text-2xl">{feature.icon}</span>
               </div>
-            ))}
+              <div className={`text-3xl font-bold bg-gradient-to-r ${feature.color} bg-clip-text text-transparent mb-2`}>
+                {feature.count}
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                {feature.title}
+              </h3>
+              <p className="text-gray-600 leading-relaxed">
+                {feature.description}
+              </p>
+            </Link>
+          ))}
           </div>
         </div>
       </section>
 
       {/* SDG Goals Preview */}
-      <section className="py-20 bg-gray-50">
+      <section id="sdg-goals" className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
@@ -406,11 +406,13 @@ const Home: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
             {sdgGoals.map((goal, index) => (
-              <Link
+              <a
                 key={goal.id}
-                to={`/sdg-targets/goal-${goal.id}`}
+                href={`/sdg-targets/goal-${goal.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="block rounded-xl overflow-hidden hover:scale-105 transition-transform duration-200 cursor-pointer group shadow-lg hover:shadow-xl"
                 style={{ animationDelay: `${index * 0.05}s` }}
                 onMouseEnter={() => setHoveredGoal(goal.id)}
@@ -421,7 +423,7 @@ const Home: React.FC = () => {
                   alt={`SDG Goal ${goal.id}`}
                   className="w-full h-auto transition-all duration-300"
                 />
-              </Link>
+              </a>
             ))}
           </div>
         </div>
