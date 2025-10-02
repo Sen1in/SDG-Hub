@@ -1,8 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Goal17 = () => {
+  const navigate = useNavigate();
+
   const handleGoBack = () => {
-    window.history.back();
+    navigate('/#sdg-goals');
   };
 
   return (
@@ -17,6 +20,9 @@ const Goal17 = () => {
         Go Back
       </button>
       <h2 className="text-3xl font-bold mb-4">SDG 17 Partnership for the Goals</h2>
+      <p className="mb-4">
+        Revitalize the global partnership for sustainable development.
+      </p>
       <a
         href="https://sdg-tracker.org/global-partnerships"
         target="_blank"

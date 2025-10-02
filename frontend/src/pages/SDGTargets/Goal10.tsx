@@ -1,8 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Goal10 = () => {
+  const navigate = useNavigate();
+
   const handleGoBack = () => {
-    window.history.back();
+    navigate('/#sdg-goals');
   };
 
   return (
@@ -17,6 +20,9 @@ const Goal10 = () => {
         Go Back
       </button>
       <h2 className="text-3xl font-bold mb-4">SDG 10 Reduced Inequalities</h2>
+      <p className="mb-4 text-lg">
+        Reduce inequality within and among countries.
+      </p>
       <a
         href="https://sdg-tracker.org/inequality"
         target="_blank"

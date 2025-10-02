@@ -1,8 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Goal12 = () => {
+  const navigate = useNavigate();
+
   const handleGoBack = () => {
-    window.history.back();
+    navigate('/#sdg-goals');
   };
 
   return (
@@ -17,6 +20,9 @@ const Goal12 = () => {
         Go Back
       </button>
       <h2 className="text-3xl font-bold mb-4">SDG 12 Responsible Consumption and Production</h2>
+      <p className="mb-4">
+        Ensure sustainable consumption and production patterns.
+      </p>
       <a
         href="https://sdg-tracker.org/sustainable-consumption-production "
         target="_blank"

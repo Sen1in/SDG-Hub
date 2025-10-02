@@ -1,10 +1,14 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Goal1 = () => {
+  const navigate = useNavigate();
+
   const handleGoBack = () => {
-    window.history.back();
+    navigate('/#sdg-goals');
   };
 
+  
   return (
     <div className="container mx-auto px-4 py-8">
       <button
@@ -18,7 +22,7 @@ const Goal1 = () => {
       </button>
       <h2 className="text-3xl font-bold mb-4">SDG 1 No Poverty</h2>
       <p className="text-lg mb-4">
-        Sustainable Development Goal 1 aims to eradicate extreme poverty by 2030.
+        End poverty in all its forms everywhere.
       </p>
       <a
         href="https://sdg-tracker.org/no-poverty"

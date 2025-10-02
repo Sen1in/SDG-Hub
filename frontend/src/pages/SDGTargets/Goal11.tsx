@@ -1,8 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Goal11 = () => {
+  const navigate = useNavigate();
+
   const handleGoBack = () => {
-    window.history.back();
+    navigate('/#sdg-goals');
   };
 
   return (
@@ -17,13 +20,16 @@ const Goal11 = () => {
         Go Back
       </button>
       <h2 className="text-3xl font-bold mb-4">SDG 11 Sustainable Cities and Communities</h2>
+      <p className="mb-4">
+        Make cities inclusive, safe, resilient and sustainable.
+      </p>
       <a
-        href="https://sdg-tracker.org/inequality"
+        href="https://ourworldindata.org/sdgs/sustainable-cities"
         target="_blank"
         rel="noopener noreferrer"
         className="text-blue-600 hover:underline mb-6 inline-block"
       >
-        https://sdg-tracker.org/inequality
+        https://sdg-tracker.org/sustainable-cities
       </a>
 
       <div className="overflow-x-auto">

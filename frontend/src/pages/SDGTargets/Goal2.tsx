@@ -1,8 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Goal2 = () => {
+  const navigate = useNavigate();
+
   const handleGoBack = () => {
-    window.history.back();
+    navigate('/#sdg-goals');
   };
 
   return (
@@ -17,6 +20,9 @@ const Goal2 = () => {
         Go Back
       </button>
       <h2 className="text-3xl font-bold mb-4">SDG 2 Zero Hunger</h2>
+      <p className="text-lg mb-4">
+        End hunger, achieve food security and improved nutrition and promote sustainable agriculture.
+      </p>
       <p className="text-lg mb-4"></p>
       <a
         href="https://sdg-tracker.org/zero-hunger"

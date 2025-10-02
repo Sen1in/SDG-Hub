@@ -1,8 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Goal3 = () => {
+  const navigate = useNavigate();
+
   const handleGoBack = () => {
-    window.history.back();
+    navigate('/#sdg-goals');
   };
 
   return (
@@ -17,6 +20,9 @@ const Goal3 = () => {
         Go Back
       </button>
       <h2 className="text-3xl font-bold mb-4">SDG 3 Good Health and Well-being</h2>
+      <p className="text-lg mb-4">
+        Ensure healthy lives and promote well-being for all at all ages.
+      </p>
       <a
         href="https://sdg-tracker.org/good-health"
         target="_blank"

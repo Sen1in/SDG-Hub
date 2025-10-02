@@ -1,8 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Goal16 = () => {
+  const navigate = useNavigate();
+
   const handleGoBack = () => {
-    window.history.back();
+    navigate('/#sdg-goals');
   };
 
   return (
@@ -17,6 +20,9 @@ const Goal16 = () => {
         Go Back
       </button>
       <h2 className="text-3xl font-bold mb-4">SDG 16 Justice, Peace and Strong Institutions</h2>
+      <p className="mb-4">
+        Promote just, peaceful and inclusive societies.
+      </p>
       <a
         href="https://sdg-tracker.org/peace-justice"
         target="_blank"

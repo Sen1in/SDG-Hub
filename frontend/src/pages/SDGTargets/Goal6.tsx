@@ -1,8 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Goal6 = () => {
+  const navigate = useNavigate();
+
   const handleGoBack = () => {
-    window.history.back();
+    navigate('/#sdg-goals');
   };
 
   return (
@@ -17,6 +20,9 @@ const Goal6 = () => {
         Go Back
       </button>
       <h2 className="text-3xl font-bold mb-4">SDG 6 Clean Water and Sanitation</h2>
+      <p className="text-lg mb-4">
+        Ensure availability and sustainable management of water and sanitation for all.
+      </p>
       <a
         href="https://sdg-tracker.org/water-and-sanitation"
         target="_blank"

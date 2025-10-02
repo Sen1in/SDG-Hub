@@ -1,8 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Goal5 = () => {
+  const navigate = useNavigate();
+
   const handleGoBack = () => {
-    window.history.back();
+    navigate('/#sdg-goals');
   };
 
   return (
@@ -17,6 +20,9 @@ const Goal5 = () => {
         Go Back
       </button>
       <h2 className="text-3xl font-bold mb-4">SDG 5 Gender Equality</h2>
+      <p className="text-lg mb-4">
+        Achieve gender equality and empower all women and girls.
+      </p>
       <a
         href="https://sdg-tracker.org/gender-equality"
         target="_blank"
