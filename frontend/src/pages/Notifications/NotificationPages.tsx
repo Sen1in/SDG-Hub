@@ -251,6 +251,12 @@ const NotificationsPage: React.FC = () => {
             <>
               <span className="font-semibold text-gray-900">{reviewData.submitter_username}</span> submitted a {reviewData.form_type} form{' '}
               <span className="font-semibold text-purple-600">"{reviewData.form_title}"</span> for review
+              {reviewData.comments && (
+                <div className="mt-3 p-4 bg-gray-50 border-l-4 border-purple-400 rounded-r-lg">
+                  <p className="text-sm font-medium text-gray-900 mb-1">Additional Comments:</p>
+                  <p className="text-gray-700">{reviewData.comments}</p>
+                </div>
+              )}
             </>
           ),
           details: [
@@ -258,7 +264,7 @@ const NotificationsPage: React.FC = () => {
             `Form Type: ${reviewData.form_type === 'action' ? 'Action' : 'Education'}`,
             `Submitted: ${new Date(reviewData.submitted_at).toLocaleDateString('en-US', {
               year: 'numeric',
-              month: 'short',
+              month: 'short', 
               day: 'numeric',
               hour: '2-digit',
               minute: '2-digit'
@@ -333,6 +339,12 @@ const NotificationsPage: React.FC = () => {
               ) : (
                 <span className="text-red-600 font-medium"> needs revision</span>
               )}
+
+            {completedData.comments && (
+              <div className="mt-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded text-yellow-900 font-medium">
+                Feedback: {completedData.comments}
+              </div>
+            )}
             </>
           ),
           details: [

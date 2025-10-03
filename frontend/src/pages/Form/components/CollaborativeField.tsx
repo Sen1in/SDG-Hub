@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import Select from 'react-select';
 import { FormFieldConfig, ActiveEditor } from '../types/collaboration';
 
 interface CollaborativeFieldProps {
@@ -245,6 +246,77 @@ const CollaborativeField: React.FC<CollaborativeFieldProps> = ({
           </select>
         );
 
+      case 'react-select':
+        // React Select component for autocomplete functionality (location, year, etc.)
+        const selectedOption = config.options?.find(option => option.value === (localValue || ''));
+        
+        // Determine if this is a year field for specific configuration
+        const isYearField = config.name === 'year';
+        
+        return (
+          <Select
+            value={selectedOption || null}
+            onChange={(selectedOption) => {
+              if (selectedOption) {
+                setLocalValue(selectedOption.value);
+                onChange(selectedOption.value);
+              } else {
+                setLocalValue('');
+                onChange('');
+              }
+            }}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            options={config.options}
+            isDisabled={isReadOnly}
+            placeholder={config.placeholder || (isYearField ? 'Select year...' : 'Select or type location...')}
+            isSearchable={true}
+            isClearable={true}
+            filterOption={(option, inputValue) => {
+              // Custom filtering logic, supports fuzzy matching
+              // For year fields: exact match or starts with
+              // For location fields: contains match
+              if (isYearField) {
+                return option.label.startsWith(inputValue) || option.value === inputValue;
+              } else {
+                // For location fields: fuzzy matching
+                // For example, typing "CHI" can match "China"
+                return option.label.toLowerCase().includes(inputValue.toLowerCase());
+              }
+            }}
+            styles={{
+              control: (base) => ({
+                ...base,
+                minHeight: '42px',
+                border: isFocused ? '2px solid #3b82f6' : '1px solid #d1d5db',
+                borderRadius: '8px',
+                boxShadow: isFocused ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
+                '&:hover': {
+                  borderColor: isFocused ? '#3b82f6' : '#9ca3af'
+                }
+              }),
+              option: (base, state) => ({
+                ...base,
+                backgroundColor: state.isSelected 
+                  ? '#3b82f6' 
+                  : state.isFocused 
+                    ? '#f3f4f6' 
+                    : 'white',
+                color: state.isSelected ? 'white' : '#374151',
+                '&:hover': {
+                  backgroundColor: state.isSelected ? '#3b82f6' : '#f3f4f6'
+                }
+              }),
+              placeholder: (base) => ({
+                ...base,
+                color: '#9ca3af'
+              })
+            }}
+            noOptionsMessage={() => 'No matching options found'}
+            loadingMessage={() => 'Loading...'}
+          />
+        );
+      
       case 'multiselect':
         const selectedValues = Array.isArray(localValue) ? localValue : [];
         return (

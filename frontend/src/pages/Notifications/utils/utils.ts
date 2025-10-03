@@ -130,6 +130,7 @@ class NotificationApiService {
               submitter_username: notification.data?.submitter_username || '',
               submitter_email: notification.data?.submitter_email || '',
               submitted_at: notification.data?.submitted_at || '',
+              comments: notification.data?.comments || undefined,
             },
           };
         } else {

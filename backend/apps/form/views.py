@@ -34,6 +34,92 @@ from pptx.enum.shapes import MSO_SHAPE
 import io
 import json
 import markdown
+import pycountry
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def location_suggestions(request):
+    """
+    Get all available location options using ISO 3166-1 standard countries
+    Used for React Select component autocomplete functionality
+    """
+    try:
+        # Get ISO 3166-1 standard countries (249 countries)
+        standard_countries = []
+        for country in pycountry.countries:
+            standard_countries.append({
+                'value': country.name,
+                'label': country.name
+            })
+        
+        # Add common non-country locations
+        additional_locations = [
+            {'value': 'Global', 'label': 'Global'},
+            {'value': 'Worldwide', 'label': 'Worldwide'},
+            {'value': 'International', 'label': 'International'},
+            {'value': 'Europe', 'label': 'Europe'},
+            {'value': 'Asia', 'label': 'Asia'},
+            {'value': 'Africa', 'label': 'Africa'},
+            {'value': 'North America', 'label': 'North America'},
+            {'value': 'South America', 'label': 'South America'},
+            {'value': 'Oceania', 'label': 'Oceania'},
+            {'value': 'Antarctica', 'label': 'Antarctica'},
+            {'value': 'Others', 'label': 'Others'}
+        ]
+        
+        # Get existing locations from database for compatibility
+        form_locations = FormContent.objects.filter(
+            location__isnull=False,
+            location__gt=''
+        ).values_list('location', flat=True).distinct()
+        
+        action_locations = ActionDb.objects.filter(
+            location_specific_actions_org_onlyonly_field__isnull=False,
+            location_specific_actions_org_onlyonly_field__gt=''
+        ).values_list('location_specific_actions_org_onlyonly_field', flat=True).distinct()
+        
+        education_locations = EducationDb.objects.filter(
+            location__isnull=False,
+            location__gt=''
+        ).values_list('location', flat=True).distinct()
+        
+        # Merge database locations
+        db_locations = set()
+        db_locations.update(form_locations)
+        db_locations.update(action_locations)
+        db_locations.update(education_locations)
+        
+        # Add database locations that are not in standard countries
+        for location in db_locations:
+            if location and location.strip():
+                location_clean = location.strip()
+                # Check if this location is not already in standard countries
+                if not any(country['value'] == location_clean for country in standard_countries):
+                    standard_countries.append({
+                        'value': location_clean,
+                        'label': location_clean
+                    })
+        
+        # Combine all locations
+        all_locations = standard_countries + additional_locations
+        
+        # Sort alphabetically by label
+        all_locations.sort(key=lambda x: x['label'])
+        
+        return Response({
+            'success': True,
+            'locations': all_locations,
+            'total': len(all_locations),
+            'standard_countries': len(standard_countries),
+            'additional_locations': len(additional_locations)
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e),
+            'locations': []
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class TeamFormListCreateView(generics.ListCreateAPIView):
     """Team form list and creation API"""
@@ -360,6 +446,10 @@ class CollaborativeFormDetailView(generics.RetrieveUpdateAPIView):
         content = self.get_object()
         field_name = request.data.get('field_name')
         field_value = request.data.get('field_value')
+
+        # Normalize custom location: if frontend sends custom_location, map it to location
+        if field_name == 'custom_location':
+            field_name = 'location'
         
         if not field_name:
             return Response(
@@ -500,6 +590,10 @@ def collaborative_form_batch_update(request, form_id):
     )
         
     changes = request.data.get('changes', {})
+    # Normalize custom location in batch updates
+    if 'custom_location' in changes and (not changes.get('location') or changes.get('location') == 'Others'):
+        changes['location'] = changes['custom_location']
+        del changes['custom_location']
     if not changes:
         return Response(
             {'error': 'No changes provided'},
@@ -1486,6 +1580,9 @@ def submit_form_for_review(request, form_id):
         is_staff=True
     ).exclude(id=request.user.id)
     
+    # Optional submission comments from the submitter
+    submission_comments = request.data.get('comments', '') if isinstance(request.data, dict) else ''
+
     notification_data = {
         'form_id': form.id,
         'form_title': content.title or form.title,
@@ -1496,6 +1593,7 @@ def submit_form_for_review(request, form_id):
         'submitter_username': request.user.username,
         'submitter_email': request.user.email,
         'submitted_at': form.submitted_for_review_at.isoformat(),
+        'comments': submission_comments,
     }
     
     # Create notifications for all administrators
