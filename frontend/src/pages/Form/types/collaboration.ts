@@ -103,7 +103,7 @@ export interface SelectOption {
 export interface FormFieldConfig {
   name: string;
   label: string;
-  type: 'text' | 'textarea' | 'number' | 'boolean' | 'url' | 'select' | 'multiselect';
+  type: 'text' | 'textarea' | 'number' | 'boolean' | 'url' | 'select' | 'multiselect' | 'react-select';
   placeholder?: string;
   required?: boolean;
   maxLength?: number;
@@ -234,4 +234,20 @@ export const generateImpactTypeOptions = (): SelectOption[] => {
     value: (index + 1).toString(),
     label: type
   }));
+};
+
+export const generateYearOptions = (): SelectOption[] => {
+  const currentYear = new Date().getFullYear();
+  const startYear = 2000;
+  const years: SelectOption[] = [];
+  
+  // Generate years from current year down to start year (descending order)
+  for (let year = currentYear; year >= startYear; year--) {
+    years.push({
+      value: year.toString(),
+      label: year.toString()
+    });
+  }
+  
+  return years;
 };

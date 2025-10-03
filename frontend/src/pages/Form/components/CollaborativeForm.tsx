@@ -16,9 +16,11 @@ import {
   generateSelectOptions, 
   generateSDGOptions,
   generateImpactTypeOptions,
+  generateYearOptions,
   IDA_IMPACT_TYPES 
 } from '../types/collaboration';
 import { useNotification } from '../../../hooks/useNotification';
+import { fetchLocationOptions, LocationOption } from '../../../services/locationService';
 
 const CollaborativeForm: React.FC = () => {
   const { teamId, formId } = useParams<{ teamId: string; formId: string }>();
@@ -28,7 +30,7 @@ const CollaborativeForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
   const { success, error: showError } = useNotification();
-  const [customLocation, setCustomLocation] = useState('');
+  const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
   
   const {
     content,
@@ -48,6 +50,22 @@ const CollaborativeForm: React.FC = () => {
     clearError,
     retryConnection
   } = useCollaborativeForm(formId!);
+
+  // 获取location选项
+  useEffect(() => {
+    const loadLocationOptions = async () => {
+      try {
+        const options = await fetchLocationOptions();
+        setLocationOptions(options);
+      } catch (error) {
+        console.error('Failed to load location options:', error);
+        // Use predefined options as fallback
+        setLocationOptions(generateSelectOptions(COMMON_OPTIONS.regions));
+      }
+    };
+
+    loadLocationOptions();
+  }, []);
 
   const handleGoBack = () => {
     if (teamId) {
@@ -195,15 +213,17 @@ const CollaborativeForm: React.FC = () => {
       { 
         name: 'location', 
         label: 'Location', 
-        type: 'select',
-        options: generateSelectOptions(COMMON_OPTIONS.regions)
+        type: 'react-select',
+        placeholder: 'Select or type location...',
+        options: locationOptions.length > 0 ? locationOptions : generateSelectOptions(COMMON_OPTIONS.regions)
       },
       { name: 'organization', label: 'Organization', type: 'text', maxLength: 128 },
       { 
         name: 'year', 
         label: 'Year', 
-        type: 'select',
-        options: generateSelectOptions(COMMON_OPTIONS.years)
+        type: 'react-select',
+        placeholder: 'Select year...',
+        options: generateYearOptions()
       },
       { 
         name: 'sdgs_related', 
@@ -643,18 +663,6 @@ const CollaborativeForm: React.FC = () => {
                             activeEditors={activeEditors.filter(editor => editor.field_name === fieldConfig.name)}
                             isReadOnly={content.form_status === 'locked'}
                           />
-                          {fieldConfig.name === 'location' && content.location === 'Others' && (
-                            <input
-                              type="text"
-                              className="form-input mt-2 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="Please specify your region"
-                              value={customLocation}
-                              onChange={e => {
-                                setCustomLocation(e.target.value);
-                                handleFieldUpdate('custom_location', e.target.value);
-                              }}
-                            />
-                          )}
                         </>
                       ) : (
                         <ReadOnlyCollaborativeField

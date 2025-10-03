@@ -32,4 +32,7 @@ urlpatterns = [
     path('forms/<int:form_id>/review-detail/', views.get_form_for_review_detail, name='get-form-for-review-detail'),
     path('forms/<int:form_id>/approve/', views.approve_form_review, name='approve-form-review'),
     path('forms/<int:form_id>/reject/', views.reject_form_review, name='reject-form-review'),
+    
+    # Location suggestions for autocomplete
+    path('locations/suggestions/', views.location_suggestions, name='location-suggestions'),
 ]
